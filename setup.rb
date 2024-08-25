@@ -113,3 +113,14 @@ if $?.success?
 else
   puts "Installation failed with exit code: #{$?.exitstatus}"
 end
+
+repository_path = "home/.fzf-mksh"
+
+# Ensure the parent directory exists
+parent_directory = File.dirname(repository_path)
+FileUtils.mkdir_p(parent_directory)
+
+# Clone the repository
+system("git", "clone", "https://github.com/seankhl/fzf-mksh", repository_path)
+
+puts "fzf-mksh cloned into #{repository_path}"

@@ -823,25 +823,25 @@ static unsigned int cursorshape = 4;
   
 **** Cols and rows
 default cols and rows
-#+BEGIN_SRC c :tangle suckless/st/config.hw
+#+BEGIN_SRC c :tangle suckless/st/config.h
   
 static unsigned int cols = 80;
 static unsigned int rows = 24;
 
 #+END_SRC
 **** Mouse shape and color
-#+BEGIN_SRC c :tangle suckless/st/config.hw
+#+BEGIN_SRC c :tangle suckless/st/config.h
 static unsigned int mouseshape = XC_xterm;
 static unsigned int mousefg = 7;
 static unsigned int mousebg = 0;
 #+END_SRC
 **** Color used to display font attributes when fontconfig selected a font that doesnt match the one requested
-#+BEGIN_SRC c :tangle suckless/st/config.hw
+#+BEGIN_SRC c :tangle suckless/st/config.h
 static unsigned int defaultattr = 11;
 #+END_SRC
 **** mouseMod
 forces mouse select/shortcuts when this key is pressed.
-#+BEGIN_SRC c :tangle suckless/st/config.hw
+#+BEGIN_SRC c :tangle suckless/st/config.h
 static uint forcemousemod = ShiftMask;
 #+END_SRC
 **** Mouse binds
@@ -1425,8 +1425,8 @@ export FZF_ALT_C_OPTS="
 #+END_SRC
 Key binds
 #+BEGIN_SRC sh :tangle home/,mkshrc
-. ~/fzf-mksh/key-bindings.mksh
-. ~/fzf-mksh/completion.mksh
+. ~/.fzf-mksh/key-bindings.mksh
+. ~/.fzf-mksh/completion.mksh
 #+END_SRC 
 **** Persistent history
 mksh will not save history to a file if $HISTFILE is not set
