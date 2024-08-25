@@ -109,10 +109,26 @@ My system follows the selenized-black colorscheme from https://github.com/jan-wa
 
 
 #+END_EXPORT
+| Name        | Hex Code |
+| Black       | #181818  |
+| Red         | #ff5e56  |
+| Soft Red    | #ed4a46  |
+| Green       | #83c746  |
+| Soft Green  | #70b433  |
+| Yellow      | #efc541  |
+| Soft Yellow | #dbb32d  |
+| Blue        | #4f9cfe  |
+| Soft Blue   | #368aeb  |
+| Soft Purple | #eb6eb7  |
+| Purple      | #a580e2  |
+| Aqua        | #56d8c9  |
+| Soft Aqua   | #3fc5b7  |
+| Orange      | #fa9153  |
+| Soft Orange | #e67f43  |
+| White       | #dedede  |
 ** StumpWM
 I use https://stumpwm.github.io/ as my window manager *right now*. I recently switched from herbstluftwm. Looks like
-#+ATTR_HTML :align left
-#+ATTR_ORG :align left
+
 [[./img/stump.png]]
 
 *** Load quicklisp and stuff
@@ -1355,8 +1371,7 @@ alias tree="eza --tree -lah"
 #+END_SRC
 **** PS1
 This is a cool prompt
-#+ATTR_HTML :align left
-#+ATTR_ORG :align left
+
 [[./img/ps1.png]]
 ***** Print a short PWD
 prints a shortened version of the current working directory, displaying "~" for the home directory, "/" for the root directory, the relative path from the home directory if applicable, or just the current directory name otherwise.
@@ -1391,8 +1406,7 @@ set -o emacs
 **** FZF stuff
 fzf stuff for mksh
 Set default opts to make it look something like this
-#+ATTR_HTML :align left
-#+ATTR_ORG :align left
+
 [[./img/fzf.png]]
 #+BEGIN_SRC sh :tangle home/,mkshrc
   export FZF_DEFAULT_OPTS=" --height 40% --layout reverse --border"
