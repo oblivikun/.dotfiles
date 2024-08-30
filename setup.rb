@@ -42,7 +42,7 @@ req = Net::HTTP::Get.new('/st/st-0.9.2.tar.gz')
 response = http.request(req)
 
 tarball_path = 'st-0.9.2.tar.gz'
-extract_path = 'suckless'
+extract_path = File.expand_path('suckless')
 source_dir = File.join(extract_path, 'st-0.9.2')
 patches_dir = File.expand_path('suckless/st-0.9.2/patches')
 
@@ -67,6 +67,10 @@ puts "Tarball extracted"
 
 File.delete(tarball_path)
 puts "Tarball removed"
+
+puts "Copying #{extract_path}/st/config.h to #{source_dir}/config.h"
+FileUtils.cp("#{extract_path}/st/config.h","#{source_dir}/config.h")
+puts "config.h copied successfully"
 
 patch_urls = [
   'https://st.suckless.org/patches/scrollback/st-scrollback-ringbuffer-0.9.2.diff',

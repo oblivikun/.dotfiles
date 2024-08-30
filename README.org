@@ -598,7 +598,7 @@ response = http.request(req)
 ***** Stuff for when we apply patches and extract it
 #+BEGIN_SRC ruby :tangle setup.rb
 tarball_path = 'st-0.9.2.tar.gz'
-extract_path = 'suckless'
+extract_path = File.expand_path('suckless')
 source_dir = File.join(extract_path, 'st-0.9.2')
 patches_dir = File.expand_path('suckless/st-0.9.2/patches')
 #+END_SRC
@@ -630,6 +630,12 @@ puts "Tarball extracted"
 File.delete(tarball_path)
 puts "Tarball removed"
 
+#+END_SRC
+****** Copy our config
+#+BEGIN_SRC ruby :tangle setup.rb
+  puts "Copying #{extract_path}/st/config.h to #{source_dir}/config.h"
+  FileUtils.cp("#{extract_path}/st/config.h","#{source_dir}/config.h")
+  puts "config.h copied successfully"
 #+END_SRC
 **** Download and apply patches
 ***** List of patches
@@ -850,10 +856,21 @@ static uint forcemousemod = ShiftMask;
 | Shift + scroll Down | Send terminal sequence "\033[6;2~" |
 | Scroll Down         | Send terminal sequence "\005"      |
 | Scroll up           | Send terminal sequence "\033[5;2~" |
-|                     |                                    |
+#+BEGIN_SRC c :tangle suckless/st/config.h
+   static MouseShortcut mshortcuts[] = {
+	/* mask                 button   function        argument       release */
+	{ XK_ANY_MOD,           Button2, clippaste,       {.i = 0},      1 },
+	{ ShiftMask,            Button4, ttysend,        {.s = "\033[5;2~"} },
+	{ XK_ANY_MOD,           Button4, ttysend,        {.s = "\031"} },
+	{ ShiftMask,            Button5, ttysend,        {.s = "\033[6;2~"} },
+	{ XK_ANY_MOD,           Button5, ttysend,        {.s = "\005"} },
+
+};
+
+#+END_SRC
 **** Normal keys
 Set  ctrl to modkey and ctrl+shift to TERMMOD
-#+BEGIN_SRC c :tangle suckless/st/config.hw
+#+BEGIN_SRC c :tangle suckless/st/config.h
   #define MODKEY Mod1Mask
 #define TERMMOD (ControlMask|ShiftMask)
 #+END_SRC
@@ -1365,15 +1382,21 @@ alias la="eza --icons -a"
 alias ls="eza --icons"
 alias tree="eza --tree -lah"
 #+END_SRC
-**** Set editor
+**** Catgirl 
+Replace with your NickServ user and passwd
+#+BEGIN_SRC sh :tangle home/,mkshrc
+  alias libera="catgirl -a user:pass -h irc.libera.chat"
+  alias rizon="catgirl -a user:pass -h irc.rizon.net"
+#+END_SRC
+*** Set editor
 #+BEGIN_SRC sh :tangle home/.mkshrc
   export EDITOR="emacs"
 #+END_SRC
-**** PS1
+*** PS1
 This is a cool prompt
 
 [[./img/ps1.png]]
-***** Print a short PWD
+**** Print a short PWD
 prints a shortened version of the current working directory, displaying "~" for the home directory, "/" for the root directory, the relative path from the home directory if applicable, or just the current directory name otherwise.
 #+BEGIN_SRC sh :tangle home/.mkshrc
 print_short_pwd()
@@ -1393,17 +1416,17 @@ print_short_pwd()
 }
 
 #+END_SRC
-***** Set the PS1
+**** Set the PS1
 sets the ps1 to include the login name, the hostname, the current directory, a newline, and then a $ sign. colored with tput
 #+BEGIN_SRC sh :tangle home/.mkshrc
 PS1='$(tput setaf 2)$(printf "%s")$(logname)$(tput sgr0)@$(tput setaf 5)$(printf "%s")$(hostname)$(tput sgr0)$(tput setaf 3) $(printf "%s")$(print_short_pwd)$(tput sgr0)$(echo -e "\n$ ")'
 #+END_SRC
-**** Add some stuff to path and set the editing mode
+*** Add some stuff to path and set the editing mode
 #+BEGIN_SRC sh :tangle home/,mkshrc
 export PATH="${PATH}:${HOME}/.local/bin:${HOME}/.cargo/bin"
 set -o emacs
 #+END_SRC
-**** FZF stuff
+*** FZF stuff
 fzf stuff for mksh
 Set default opts to make it look something like this
 
@@ -1428,7 +1451,7 @@ Key binds
 . ~/.fzf-mksh/key-bindings.mksh
 . ~/.fzf-mksh/completion.mksh
 #+END_SRC 
-**** Persistent history
+*** Persistent history
 mksh will not save history to a file if $HISTFILE is not set
 #+BEGIN_SRC sh :tangle home/,mkshrc
   export HISTFILE="$HOME/.mksh_history"
