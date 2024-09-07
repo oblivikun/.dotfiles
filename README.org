@@ -329,7 +329,8 @@ definekey top XF86MonBrightnessUp exec sudo brightnessctl s +15%
 definekey top XF86MonBrightnessDown exec sudo brightnessctl s 15%-
 #+END_SRC
 ** StumpWM
-+I use https://stumpwm.github.io/ as my window manager *right now*. I ++ ++ ++ recently switched from herbstluftwm.+ Looks like this.
++I use https://stumpwm.github.io/ as my window manager *right now*. I recently switched from herbstluftwm+
+Looks like this.
 
 [[./img/stump.png]]
 
