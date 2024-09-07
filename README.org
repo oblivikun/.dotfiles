@@ -205,7 +205,7 @@ Enter
 #+END_SRC
 ****** Apps search with fzf
 The script
-#+BEGIN_SRC mksh :tangle home/.app-launcher-fzf.sh
+#+BEGIN_SRC sh :tangle home/.app-launcher-fzf.sh
 #!/usr/bin/env mksh
 
 function main() {
