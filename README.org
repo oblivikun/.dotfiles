@@ -5,13 +5,14 @@ These are my dotfiles for stumpWM, emacs, mksh, gnu screen (and other stuff)
 ** Usage:
 git clone this(duh)
 #+BEGIN_SRC sh
-git clone --depth=1 --recurse-submodules https://gitub.com/oblivikun/dotfiles
+  git clone --depth=1 --recurse-submodules https://gitub.com/oblivikun/dotfiles
 #+END_SRC
 Now you can use the makefile by typing make, or tangle it manually with emacs and run the ruby script
 ** Script:
 this is a little ruby script to set everything up
 *** Load stuff
 #+BEGIN_SRC ruby :tangle setup.rb
+  require 'optparse'
   require 'uri'
   require 'tempfile'
   require 'fileutils'
@@ -23,12 +24,12 @@ this is a little ruby script to set everything up
 *** Define privilege escalator
 this can be sudo, doas, su. whatever
 #+BEGIN_SRC ruby :tangle setup.rb
-$privilege_escalator = 'sudo'
+  $privilege_escalator = 'sudo'
 #+END_SRC
 ** Colorscheme
 
 My system follows the selenized-black colorscheme from https://github.com/jan-warchol/selenized/blob/master/the-values.md
- . I used to make it switch between light and dark mode at certain times but that got annoying, so now i just run dark mode.
+. I used to make it switch between light and dark mode at certain times but that got annoying, so now i just run dark mode.
  
 #+BEGIN_EXPORT html
 <table>
@@ -126,8 +127,209 @@ My system follows the selenized-black colorscheme from https://github.com/jan-wa
 | Orange      | #fa9153  |
 | Soft Orange | #e67f43  |
 | White       | #dedede  |
+** CageBreak
+Cagebreak is a window manager like ratpoison, but more minimal and it uses wayland!1!1! But it doesnt support wlr_layer_shell.
+*** Startup programs
+Foot server and server we use for our app launcher
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config :mkdirp yes
+  exec foot --server
+  exec foot --server=/tmp/foot-app.sock -c ~/.config/foot/app.ini
+#+END_SRC
+*** Workspaces
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  workspaces 6
+#+END_SRC
+*** Enable cursor
+#+BEGIN_SRC conf-space :tanlge home/.config/cagebreak/config
+  cursor on
+#+END_SRC
+*** Keys
+**** Cheatsheet
+***** Top Map
+| Key            | Action                        |
+| C-A-F1-F6      | switch to tty1-6              |
+| A-S-F1-F6      | move window to workspace 1-6  |
+| A-F1-F6        | switch to workspace 1-6       |
+| Volume Up      | volume up                     |
+| Volume down    | volume down                   |
+| brightness up  | backlight up(brightnessctl)   |
+| brightnessdown | backlight down(brightnessctl) |
+| Volume Muter   | volume toggle                 |
+|                |                               |
+***** Root map
+| Key                    | Action                       |
+| C-s                    | Screenshot monitor eDP-1     |
+| A-s                    | Screenshot monitor HDMI-2    |
+| s                      | Horizontal Split             |
+| S                      | Vertical split               |
+| Q                      | remove all splits            |
+| R                      | enter resize mode            |
+| N                      | nextscreen                   |
+| P                      | prevscreen                   |
+| a                      | display time                 |
+| C-n                    | move window to next screen   |
+| C-p                    | move window to prev screen   |
+| C-{Up,Left,Right,Down} | Exchange window in direction |
+| {Left,Right,Up,Down}   | Focus on window in direction |
+| e                      | emacs                        |
+| c                      | connect to foot server       |
+| k                      | close window                 |
+| w                      | open librewolf               |
+***** Resize map
+| Key                  | Action              |
+| {Left,Right,Up,Down} | resize in direction |
+| Escape               | return to top mode  |
+**** Prefix Key
+This key you press before pressing any key in the root map
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config :mkdirp yes
+  escape L-x
+#+END_SRC
+**** Applications
+***** Screenshots
+Just screenshot monitors with grim
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config :mkdirp yes
+  bind C-s exec cd ~/Pictures/screenshots && grim -o eDP-1
+  bind A-s exec cd ~/Pictures/screenshots	&& grim	-o HDMI-2
+#+END_SRC
+***** Browser, editor, and terminal
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config :mkdirp yes
+  bind c exec footclient
+  bind e exec emacs
+  bind w exec librewolf
+#+END_SRC
+***** Application Map
+Enter
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  definemode apps
+  bind A setmode apps
+#+END_SRC
+****** Apps search with fzf
+The script
+#+BEGIN_SRC mksh :tangle home/.app-launcher-fzf.sh
+#!/usr/bin/env mksh
+
+function main() {
+        IFS=:; for i in $PATH; do test -d "$i" && find "$i" -maxdepth 1 -executable -type f -printf '%P\n'; done | sort -u | \
+        fzf --prompt='Select executable: ' --exit-0  --bind 'ctrl-c:abort' | xargs -I {} bash -c "nohup {} > /dev/null 2>&1 & disown"
+}
+
+main
+
+#+END_SRC
+Foot config
+#+BEGIN_SRC conf-unix :tangle home/.config/foot/app.ini :mkdirp yes
+[main]
+shell="mksh -c '/home/erel/.app-launcher-fzf.sh'"  
+#+END_SRC
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+   bind s exec footclient -s /tmp/foot-app.sock
+  definekey apps s exec gentoo
+  definekey apps Escape setmode top
+#+END_SRC
+**** Window Management
+Splits, Removing, moving ..
+***** Splits and stuff
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind s hsplit
+  bind S vsplit
+  bind Q only
+
+#+END_SRC
+***** Moving and changing focus
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind Tab focus
+  bind A-Tab focusprev
+#+END_SRC
+Arrow Keys
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+    bind Left focusleft
+    bind Down focusdown
+    bind Up focusup
+    bind Right focusright
+#+END_SRC
+Exchanging
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind C-Left exchangeleft
+  bind C-Down exchangedown
+  bind C-Up exchangeup
+  bind C-Right exchangeright
+#+END_SRC
+****** Screen stuff
+Switching focus
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind N nextscreen
+  bind P prevscreen
+  bind p prev
+  bind n next
+#+END_SRC
+Moving
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind C-n movetonextscreen
+  bind C-p movetoprevscreen
+#+END_SRC
+****** Resize map
+Enter resize
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+bind r setmode resize
+#+END_SRC
+Resize Keys
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+definekey resize Left resizeleft
+definekey resize Right resizeright
+definekey resize Down resizedown
+definekey resize Up resizeup
+definekey resize Escape setmode top
+
+#+END_SRC
+****** Workspace stuff
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  
+definekey top A-F1 workspace 1
+definekey top A-F2 workspace 2
+definekey top A-F3 workspace 3
+definekey top A-F4 workspace 4
+definekey top A-F5 workspace 5
+definekey top A-F6 workspace 6
+
+definekey top A-S-F1 movetoworkspace 1
+definekey top A-S-F2 movetoworkspace 2
+definekey top A-S-F3 movetoworkspace 3
+definekey top A-S-F4 movetoworkspace 4
+definekey top A-S-F5 movetoworkspace 5
+definekey top A-S-F6 movetoworkspace 6
+
+#+END_SRC
+**** How do i exit cagebreak!1!1!
+press L-x D
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind D quit
+#+END_SRC
+press L-x k to close a window
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind k close
+#+END_SRC
+**** Message stuff
+Random message stuff wil go here
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  bind a time
+#+END_SRC
+**** Functionkeys
+#+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
+  
+definekey top XF86_Switch_VT_1 switchvt 1
+definekey top XF86_Switch_VT_2 switchvt 2
+definekey top XF86_Switch_VT_3 switchvt 3
+definekey top XF86_Switch_VT_4 switchvt 4
+definekey top XF86_Switch_VT_5 switchvt 5
+definekey top XF86_Switch_VT_6 switchvt 6
+definekey top XF86AudioMute exec pactl set-sink-mute 0 toggle
+definekey top XF86AudioLowerVolume exec pactl set-sink-mute 0 off&&amixer set Master 1%-
+definekey top XF86AudioRaiseVolume exec pactl set-sink-mute 0 off&&amixer set Master 1%+
+definekey top XF86MonBrightnessUp exec sudo brightnessctl s +15%
+definekey top XF86MonBrightnessDown exec sudo brightnessctl s 15%-
+#+END_SRC
 ** StumpWM
-I use https://stumpwm.github.io/ as my window manager *right now*. I recently switched from herbstluftwm. Looks like
++I use https://stumpwm.github.io/ as my window manager *right now*. I ++ ++ ++ recently switched from herbstluftwm.+ Looks like this.
 
 [[./img/stump.png]]
 
@@ -135,105 +337,107 @@ I use https://stumpwm.github.io/ as my window manager *right now*. I recently sw
 **** Install quicklisp (script)
 Installs quicklisp and adds it to init file
 #+BEGIN_SRC ruby :tangle setup.rb
+  def install_quicklisp
 
 
+    url = URI.parse('https://beta.quicklisp.org/quicklisp.lisp')
+    response = Net::HTTP.get_response(url)
+    temp_file = Tempfile.new(['quicklisp_commands', '.lisp'])
 
-url = URI.parse('https://beta.quicklisp.org/quicklisp.lisp')
-response = Net::HTTP.get_response(url)
-temp_file = Tempfile.new(['quicklisp_commands', '.lisp'])
-
-File.open('quicklisp.lisp', 'wb') do |file|
-  file.write(response.body)
-end
-commands = "(quicklisp-quickstart:install)\n(quicklisp:add-to-init-file)"
-temp_file.write(commands)
-temp_file.rewind
+    File.open('quicklisp.lisp', 'wb') do |file|
+      file.write(response.body)
+    end
+    commands = "(quicklisp-quickstart:install)\n(quicklisp:add-to-init-file)"
+    temp_file.write(commands)
+    temp_file.rewind
 
 
-system("sbcl --noinform --load quicklisp.lisp --script #{temp_file.path} --eval '(delete-file \"#{temp_file.path}\")'")
+    system("sbcl --noinform --load quicklisp.lisp --script #{temp_file.path} --eval '(delete-file \"#{temp_file.path}\")'")
 
-# Clean up the temporary file
-temp_file.close
-temp_file.unlink
+    # Clean up the temporary file
+    temp_file.close
+    temp_file.unlink
+  end
 #+END_SRC
 **** Load quicklisp(stump)
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp :mkdirp yes
-(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
-                                       (user-homedir-pathname))))
-  (when (probe-file quicklisp-init)
-    (load quicklisp-init)))
+  (let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
+                                         (user-homedir-pathname))))
+    (when (probe-file quicklisp-init)
+      (load quicklisp-init)))
 #+END_SRC
 **** Load quicklisp systems stuff
 
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(ql:quickload '(
-		"slynk"
-		"cl-fad"
-		"alexandria"
-		"clx"
-		"xembed"
-		"drakma"
-		"cl-ppcre"
-		))
+  (ql:quickload '(
+  		"slynk"
+  		"cl-fad"
+  		"alexandria"
+  		"clx"
+  		"xembed"
+  		"drakma"
+  		"cl-ppcre"
+  		))
 #+END_SRC
 *** Little sbcl stuff i took from somewhere on the internet
 #+BEGIN_SRC  lisp :tangle home/.stumpwm.d/init.lisp
-(declaim (optimize (speed 3) (safety 3)))
-(setq *block-compile-default* t)
+  (declaim (optimize (speed 3) (safety 3)))
+  (setq *block-compile-default* t)
 #+END_SRC
 *** Set default package
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(in-package :stumpwm)
-(setf *default-package* :stumpwm)
+  (in-package :stumpwm)
+  (setf *default-package* :stumpwm)
 #+END_SRC
 *** Load and install modules
 **** Install(script)
 #+BEGIN_SRC ruby :tangle setup.rb
+  def clone_stumpwm_contrib
 
+    repository_path = "home/.stumpwm.d/src/stumpwm-contrib"
 
-repository_path = "home/.stumpwm.d/src/stumpwm-contrib"
+    # Ensure the parent directory exists
+    parent_directory = File.dirname(repository_path)
+    FileUtils.mkdir_p(parent_directory)
 
-# Ensure the parent directory exists
-parent_directory = File.dirname(repository_path)
-FileUtils.mkdir_p(parent_directory)
+    # Clone the repository
+    system("git", "clone", "https://github.com/stumpwm/stumpwm-contrib", repository_path)
 
-# Clone the repository
-system("git", "clone", "https://github.com/stumpwm/stumpwm-contrib", repository_path)
-
-puts "Modules cloned successfully into #{repository_path}"
+    puts "Modules cloned successfully into #{repository_path}"
+  end
 #+END_SRC
 **** load(stump)
 Most of these arent actually used, but i might use them later
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(set-module-dir "~/.stumpwm.d/src/stumpwm-contrib/")
-(mapcar #'load-module '(
-			"cpu"
-			"hostname"
-			"swm-gaps"
-			"command-history"
-			))
+  (set-module-dir "~/.stumpwm.d/src/stumpwm-contrib/")
+  (mapcar #'load-module '(
+  			"cpu"
+  			"hostname"
+  			"swm-gaps"
+  			"command-history"
+  			))
 #+END_SRC
 *** Colors
 
 **** Define the color map
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(defvar *color-map*
-  '((black . "#181818")
-    (red . "#ff5e56")
-    (softred . "#ed4a46")
-    (green . "#83c746")
-    (softgreen . "#70b433")
-    (yellow . "#efc541")
-    (softyellow . "#dbb32d")
-    (blue . "#4f9cfe")
-    (softblue . "#368aeb")
-    (softpurple . "#eb6eb7")
-    (purple . "#a580e2")
-    (aqua . "#56d8c9")
-    (softaqua . "#3fc5b7")
-    (orange . "#fa9153")
-    (softorange . "#e67f43")
-    (white . "#dedede")))
+  (defvar *color-map*
+    '((black . "#181818")
+      (red . "#ff5e56")
+      (softred . "#ed4a46")
+      (green . "#83c746")
+      (softgreen . "#70b433")
+      (yellow . "#efc541")
+      (softyellow . "#dbb32d")
+      (blue . "#4f9cfe")
+      (softblue . "#368aeb")
+      (softpurple . "#eb6eb7")
+      (purple . "#a580e2")
+      (aqua . "#56d8c9")
+      (softaqua . "#3fc5b7")
+      (orange . "#fa9153")
+      (softorange . "#e67f43")
+      (white . "#dedede")))
 #+END_SRC
 **** put the stuff from `*color-map*` In `*colors` 
 ***** Values
@@ -256,51 +460,51 @@ Use them like this in the modeline
 |   ^14 | orange     |
 ***** Set it
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf *colors*
-      (mapcar (lambda (color-name)
-		(cdr (assoc color-name *color-map*)))
-	      '(black
-		softred
-		softyellow
-		softblue
-		softpurple
-		softaqua
-		softorange
-		blue
-		white
-		aqua
-		red
-		green
-		yellow
-		purple
-		orange
-		)))
+  (setf *colors*
+        (mapcar (lambda (color-name)
+  		(cdr (assoc color-name *color-map*)))
+  	      '(black
+  		softred
+  		softyellow
+  		softblue
+  		softpurple
+  		softaqua
+  		softorange
+  		blue
+  		white
+  		aqua
+  		red
+  		green
+  		yellow
+  		purple
+  		orange
+  		)))
 #+END_SRC
 **** Update the color map
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
- (update-color-map (current-screen))
+  (update-color-map (current-screen))
 #+END_SRC
 **** Other colors
 ***** Foreground and Background
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(set-fg-color "#b9b9b9")
-(set-bg-color "#181818")
+  (set-fg-color "#b9b9b9")
+  (set-bg-color "#181818")
 #+END_SRC
 ***** Focus and borders
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(set-border-color "#83c746")
-(set-focus-color "#70b433")
-(set-unfocus-color "#777777")
-(set-float-focus-color "#368aeb")
-(set-float-unfocus-color "#eb6eb7")
+  (set-border-color "#83c746")
+  (set-focus-color "#70b433")
+  (set-unfocus-color "#777777")
+  (set-float-focus-color "#368aeb")
+  (set-float-unfocus-color "#eb6eb7")
 #+END_SRC
 *** Font
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(set-font "-misc-spleen-medium-r-normal--16-160-72-72-c-80-iso10646-1")
+  (set-font "-misc-spleen-medium-r-normal--16-160-72-72-c-80-iso10646-1")
 #+END_SRC
 *** Startup message
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setq *startup-message* (format nil "^b^8W Finished loading"))
+  (setq *startup-message* (format nil "^b^8W Finished loading"))
 #+END_SRC
 *** Keys
 
@@ -317,7 +521,7 @@ B* means button*
 **** Prefix Key
 I set the prefix key to windows + space because ctrl+t gets in the way of web browsers. The prefix key  goes before everything in the root map
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(set-prefix-key (kbd "s-SPC"))
+  (set-prefix-key (kbd "s-SPC"))
 #+END_SRC
 **** Multimedia Keys
 This is taken from this [[https:gist.github.com/TeMPOraL/4cece5a894c62a4f02ff14028d9f20e1][gist]], depends on `pactl` which is part of pulseaudio(pure alsa setups might not work and *BSD might not work)
@@ -326,140 +530,140 @@ This is taken from this [[https:gist.github.com/TeMPOraL/4cece5a894c62a4f02ff140
 Retreive the current volume settings with pactl and parse the output to determine whether the volume is muted  and get the percentages
 
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(defun current-volume-settings ()
-  "Return current volume settings as multiple values (`MUTEDP', `VOLUME-LEFT-%', `VOLUME-RIGHT-%')."
-  (let* ((raw-output (run-shell-command "pactl list sinks" t))
-         (raw-mute (nth-value 1 (cl-ppcre:scan-to-strings "Mute: ([a-z]+)" raw-output)))
-         (raw-volume (nth-value 1 (cl-ppcre:scan-to-strings "Volume: .+/\\s+(\\d+).+/.+/\\s+(\\d+).+/" raw-output)))
-         (mutedp (string= (svref raw-mute 0) "yes"))
-         (vol%-l (parse-integer (svref raw-volume 0)))
-         (vol%-r (parse-integer (svref raw-volume 1))))
-    (values mutedp vol%-l vol%-r)))
+  (defun current-volume-settings ()
+    "Return current volume settings as multiple values (`MUTEDP', `VOLUME-LEFT-%', `VOLUME-RIGHT-%')."
+    (let* ((raw-output (run-shell-command "pactl list sinks" t))
+           (raw-mute (nth-value 1 (cl-ppcre:scan-to-strings "Mute: ([a-z]+)" raw-output)))
+           (raw-volume (nth-value 1 (cl-ppcre:scan-to-strings "Volume: .+/\\s+(\\d+).+/.+/\\s+(\\d+).+/" raw-output)))
+           (mutedp (string= (svref raw-mute 0) "yes"))
+           (vol%-l (parse-integer (svref raw-volume 0)))
+           (vol%-r (parse-integer (svref raw-volume 1))))
+      (values mutedp vol%-l vol%-r)))
 
 #+END_SRC
 ****** Display volume
 Display the output of `current-volume-settings` with `message`
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(defun display-current-volume ()
-  "Graphically display the current volume state."
-  (multiple-value-bind (mutedp left% right%)
-      (current-volume-settings)
-    (let ((*record-last-msg-override* t))
-      (message "Volume: ~:[~;^1MUTE^n~] [~D%/~D%]" mutedp left% right%))))
+  (defun display-current-volume ()
+    "Graphically display the current volume state."
+    (multiple-value-bind (mutedp left% right%)
+        (current-volume-settings)
+      (let ((*record-last-msg-override* t))
+        (message "Volume: ~:[~;^1MUTE^n~] [~D%/~D%]" mutedp left% right%))))
 
 #+END_SRC
 ****** Change volume
 adjusts volume by a specified delta percentage using `pactl set-sink-volume`, exceeding 100% if FORCE is true, then displays it with `display-current-volume`
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(defcommand vol+ (dvol force) ((:number "Delta % (can be negative): ") (:y-or-n "Override volume limits? "))
-  "Change the volume by `DV' percent, possibly going over 100% if `FORCE' is T."
-  (multiple-value-bind (mutedp left% right%)
-      (current-volume-settings)
-    (declare (ignore mutedp))
-    (let* ((current (max left% right%))
-           (target (+ current dvol))
-           (final (if force
-                      (max 0 target)
-                      (clamp target 0 100))))
-      (run-shell-command (format nil "pactl set-sink-volume 0 ~D%" final))))
-  (display-current-volume))
+  (defcommand vol+ (dvol force) ((:number "Delta % (can be negative): ") (:y-or-n "Override volume limits? "))
+  	    "Change the volume by `DV' percent, possibly going over 100% if `FORCE' is T."
+  	    (multiple-value-bind (mutedp left% right%)
+  		(current-volume-settings)
+  	      (declare (ignore mutedp))
+  	      (let* ((current (max left% right%))
+  		     (target (+ current dvol))
+  		     (final (if force
+  				(max 0 target)
+  				(clamp target 0 100))))
+  		(run-shell-command (format nil "pactl set-sink-volume 0 ~D%" final))))
+  	    (display-current-volume))
 
 #+END_SRC
 ****** Toggle Mute
 Pretty simple, uses `pactl set-sink-mute 0 toggle` to toggle the mute between on and off and then displays it
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
 
-(defcommand vol-mute () ()
-  "Toggle mute of volume."
-  (run-shell-command "pactl set-sink-mute 0 toggle" t)
-  (display-current-volume))
+  (defcommand vol-mute () ()
+  	    "Toggle mute of volume."
+  	    (run-shell-command "pactl set-sink-mute 0 toggle" t)
+  	    (display-current-volume))
 
 #+END_SRC
 ****** Bind the keys
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(define-key stumpwm:*top-map* (stumpwm:kbd "XF86AudioLowerVolume") "vol+ -5 n")
-(define-key stumpwm:*top-map* (stumpwm:kbd "XF86AudioRaiseVolume") "vol+ 5 n")
-(define-key *top-map* (stumpwm:kbd "XF86AudioMute") "vol-mute")
+  (define-key stumpwm:*top-map* (stumpwm:kbd "XF86AudioLowerVolume") "vol+ -5 n")
+  (define-key stumpwm:*top-map* (stumpwm:kbd "XF86AudioRaiseVolume") "vol+ 5 n")
+  (define-key *top-map* (stumpwm:kbd "XF86AudioMute") "vol-mute")
 #+END_SRC
 ***** Brightness
 uses `brightnessctl`. install it first
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(define-key *top-map* (kbd "XF86MonBrightnessUp") "run-shell-command sudo brightnessctl s +15%")
-(define-key *top-map* (kbd "XF86MonBrightnessDown") "run-shell-command sudo brightnessctl s 15%-")
+  (define-key *top-map* (kbd "XF86MonBrightnessUp") "run-shell-command sudo brightnessctl s +15%")
+  (define-key *top-map* (kbd "XF86MonBrightnessDown") "run-shell-command sudo brightnessctl s 15%-")
 
 #+END_SRC
 **** Top level keys
 ***** Workspace switching
 These keys are for quick workspace switching like i did in ratpoison
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(define-key *top-map* (kbd "M-F1") "gselect 1")
-(define-key *top-map* (kbd "M-F2") "gselect 2")
-(define-key *top-map* (kbd "M-F3") "gselect 3")
-(define-key *top-map* (kbd "M-F4") "gselect 4")
-(define-key *top-map* (kbd "M-F5") "gselect 5")
+  (define-key *top-map* (kbd "M-F1") "gselect 1")
+  (define-key *top-map* (kbd "M-F2") "gselect 2")
+  (define-key *top-map* (kbd "M-F3") "gselect 3")
+  (define-key *top-map* (kbd "M-F4") "gselect 4")
+  (define-key *top-map* (kbd "M-F5") "gselect 5")
 #+END_SRC
 ***** Flameshot
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(define-key *top-map* (kbd "Print") "run-shell-command flameshot gui")
+  (define-key *top-map* (kbd "Print") "run-shell-command flameshot gui")
 #+END_SRC
 ***** Mode line toggle
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(define-key *top-map* (kbd "M-ESC") "mode-line")
+  (define-key *top-map* (kbd "M-ESC") "mode-line")
 #+END_SRC
 ***** Quick terminal
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(define-key *top-map* (kbd "s-RET") "run-shell-command st")
+  (define-key *top-map* (kbd "s-RET") "run-shell-command st")
 #+END_SRC
 **** Prefixed keys
 ***** Applications
 firefox and librewolf
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(define-key *root-map* (kbd "c") "run-shell-command st")
-(define-key *root-map* (kbd "f") "run-shell-command librewolf")
+  (define-key *root-map* (kbd "c") "run-shell-command st")
+  (define-key *root-map* (kbd "f") "run-shell-command librewolf")
 #+END_SRC
 ***** Window management
 Toggling float(stolen from izder456)
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
   (defcommand toggle-float () ()
-    (if (float-window-p (current-window))
-        (unfloat-this)
-        (float-this)))
+  	    (if (float-window-p (current-window))
+  		(unfloat-this)
+  		(float-this)))
   (define-key *root-map* (kbd "s-p") "toggle-float")
 #+END_SRC
 *** Message and input thingie
 **** Set width of the messsage border
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(set-msg-border-width 1)
+  (set-msg-border-width 1)
 #+END_SRC
 **** Set position and padding of message window
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf *message-window-padding* 3
-      *message-window-y-padding* 3
-      *message-window-gravity* :top)
-(setf *input-window-gravity* :center)
+  (setf *message-window-padding* 3
+        ,*message-window-y-padding* 3
+        ,*message-window-gravity* :top)
+  (setf *input-window-gravity* :center)
 #+END_SRC
 *** Modules
 **** Gaps
 Turn zem on
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf swm-gaps:*inner-gaps-size* 4
-    swm-gaps:*outer-gaps-size* 3)
+  (setf swm-gaps:*inner-gaps-size* 4
+        swm-gaps:*outer-gaps-size* 3)
 
-(swm-gaps:toggle-gaps-on)
+  (swm-gaps:toggle-gaps-on)
 #+END_SRC
 *** Initialization Hook
 **** Create groups and rename
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(when *initializing*
-  (grename "[1]")
-  (gnewbg "[2]")
-  (gnewbg "[3]")
-  (gnewbg "[4]")
-  (gnewbg "[5]")
+  (when *initializing*
+    (grename "[1]")
+    (gnewbg "[2]")
+    (gnewbg "[3]")
+    (gnewbg "[4]")
+    (gnewbg "[5]")
 #+END_SRC
 **** Activate which-key
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(which-key-mode)
+  (which-key-mode)
 #+END_SRC
 **** Run shell commands
 Wallpaper, please download
@@ -484,10 +688,10 @@ Vanilla stumpwm modeline
 ***** Stuff
 Set window format with a custom foreground color and make it so that the window list is right aligned and fits in a 15 character space
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf *window-format* (format NIL "^(:fg \"~A\")<%15t>" "#70b433")
-      *window-border-style* :tight
-      *normal-border-width* 1
-      *hidden-window-color* "^**")
+  (setf *window-format* (format NIL "^(:fg \"~A\")<%15t>" "#70b433")
+        ,*window-border-style* :tight
+        ,*normal-border-width* 1
+        ,*hidden-window-color* "^**")
 #+END_SRC
 **** Time format
 Format time something like `Hour:Minute:Second d/m/y Day`
@@ -528,16 +732,16 @@ Note that not everything here might work, this is a libc thing, i havent tested 
 |        |                                                  |
 ***** Stuff
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf *time-modeline-string* " %I:%M:%S%P, %D %a")
+  (setf *time-modeline-string* " %I:%M:%S%P, %D %a")
 #+END_SRC
 **** Mode line colors and styling
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf *mode-line-background-color* "#282828"
-      *mode-line-border-color* "#777777"
-      *mode-line-border-width* 1
-      *mode-line-pad-x* 0
-      *mode-line-pad-y* 6
-      *mode-line-timeout* 1)
+  (setf *mode-line-background-color* "#282828"
+        ,*mode-line-border-color* "#777777"
+        ,*mode-line-border-width* 1
+        ,*mode-line-pad-x* 0
+        ,*mode-line-pad-y* 6
+        ,*mode-line-timeout* 1)
 #+END_SRC
 **** Group format
 ***** Cheatsheet
@@ -547,7 +751,7 @@ Note that not everything here might work, this is a libc thing, i havent tested 
 | %t    | Groups Name                                                      |
 ***** 
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf *group-format* "%t")
+  (setf *group-format* "%t")
 
 #+END_SRC
 **** Modules
@@ -583,7 +787,7 @@ Cheatsheet parts for modules
 ***** Stuff
 Create a modeline that showsthe current group name, a list of groups, a list of the windows, and on the other side the time. all with colors
 #+BEGIN_SRC lisp :tangle home/.stumpwm.d/init.lisp
-(setf *screen-mode-line-format* (list "^B^2*[%n]^n  " "^7{%g}  "  "^7*%v" " ^>^6 %d "))
+  (setf *screen-mode-line-format* (list "^B^2*[%n]^n  " "^7{%g}  "  "^7*%v" " ^>^6 %d "))
 #+END_SRC
 ** St
 Looks like this [[./img/st.png]]
@@ -591,44 +795,45 @@ Looks like this [[./img/st.png]]
 **** Download And extract st-0.9.2 from dl.suckless.org$
 ***** Http stuff
 #+BEGIN_SRC ruby :tangle setup.rb
-http = Net::HTTP.new('dl.suckless.org')
-req = Net::HTTP::Get.new('/st/st-0.9.2.tar.gz')
-response = http.request(req)
+  def install_st
+    http = Net::HTTP.new('dl.suckless.org')
+    req = Net::HTTP::Get.new('/st/st-0.9.2.tar.gz')
+    response = http.request(req)
 #+END_SRC
 ***** Stuff for when we apply patches and extract it
 #+BEGIN_SRC ruby :tangle setup.rb
-tarball_path = 'st-0.9.2.tar.gz'
-extract_path = File.expand_path('suckless')
-source_dir = File.join(extract_path, 'st-0.9.2')
-patches_dir = File.expand_path('suckless/st-0.9.2/patches')
+  tarball_path = 'st-0.9.2.tar.gz'
+  extract_path = File.expand_path('suckless')
+  source_dir = File.join(extract_path, 'st-0.9.2')
+  patches_dir = File.expand_path('suckless/st-0.9.2/patches')
 #+END_SRC
 ***** Download it
 #+BEGIN_SRC ruby :tangle setup.rb
-File.open(tarball_path, 'wb') { |f| f.write(response.body) }
-puts "File downloaded successfully"
+  File.open(tarball_path, 'wb') { |f| f.write(response.body) }
+  puts "File downloaded successfully"
 #+END_SRC
 ***** Extract it
 #+BEGIN_SRC ruby :tangle setup.rb
-# Extract the tarball
-Zlib::GzipReader.open(tarball_path) do |gz|
-  Gem::Package::TarReader.new(gz) do |tar|
-    tar.each do |entry|
-      dest = File.join(extract_path, entry.full_name)
-      if entry.directory?
-        FileUtils.mkdir_p(dest)
-      else
-        FileUtils.mkdir_p(File.dirname(dest))
-        File.open(dest, "wb") { |f| f.write(entry.read) }
+  # Extract the tarball
+  Zlib::GzipReader.open(tarball_path) do |gz|
+    Gem::Package::TarReader.new(gz) do |tar|
+      tar.each do |entry|
+        dest = File.join(extract_path, entry.full_name)
+        if entry.directory?
+          FileUtils.mkdir_p(dest)
+        else
+          FileUtils.mkdir_p(File.dirname(dest))
+          File.open(dest, "wb") { |f| f.write(entry.read) }
+        end
       end
     end
   end
-end
-puts "Tarball extracted"
+  puts "Tarball extracted"
 #+END_SRC
 ****** Remove the tarball
 #+BEGIN_SRC ruby :tangle setup.rb
-File.delete(tarball_path)
-puts "Tarball removed"
+  File.delete(tarball_path)
+  puts "Tarball removed"
 
 #+END_SRC
 ****** Copy our config
@@ -642,83 +847,83 @@ puts "Tarball removed"
 I will put any patches i apply to st here, and it will automagically download and patch them
 #+BEGIN_SRC ruby :tangle setup.rb
   patch_urls = [
-  'https://st.suckless.org/patches/scrollback/st-scrollback-ringbuffer-0.9.2.diff',
-'https://st.suckless.org/patches/clipboard/st-clipboard-0.8.3.diff'
+    'https://st.suckless.org/patches/scrollback/st-scrollback-ringbuffer-0.9.2.diff',
+    'https://st.suckless.org/patches/clipboard/st-clipboard-0.8.3.diff'
   ]
 #+END_SRC
 ***** Download patches
 make patches dir and download the patches
 #+BEGIN_SRC ruby :tangle setup.rb
-FileUtils.mkdir_p(patches_dir)
-patch_urls.each do |url|
-  uri = URI(url)
-  patch_content = Net::HTTP.get(uri)
-  patch_filename = File.basename(uri.path)
-  patch_path =  "#{patches_dir}/#{patch_filename}"
-  
-  File.open(patch_path, 'w') { |f| f.write(patch_content) }
-  puts "Downloaded patch: #{patch_filename}"
-  puts "Saved to: #{File.expand_path(patch_path)}"
+  FileUtils.mkdir_p(patches_dir)
+  patch_urls.each do |url|
+    uri = URI(url)
+    patch_content = Net::HTTP.get(uri)
+    patch_filename = File.basename(uri.path)
+    patch_path =  "#{patches_dir}/#{patch_filename}"
+    
+    File.open(patch_path, 'w') { |f| f.write(patch_content) }
+    puts "Downloaded patch: #{patch_filename}"
+    puts "Saved to: #{File.expand_path(patch_path)}"
 #+END_SRC
 ***** Apply patches
 #+BEGIN_SRC ruby :tangle setup.rb
-      Dir.chdir(source_dir) do
-      puts Dir.pwd
-      patch_command = "patch -p1 < #{File.expand_path(patch_path)}"
-  stdout, stderr, status = Open3.capture3(patch_command)
-      if status.success?
-        puts "Successfully applied patch: #{patch_filename}"
-      else
-        puts "Failed to apply patch: #{patch_filename}"
-        puts "Error: #{stderr}"
-      end
+  Dir.chdir(source_dir) do
+    puts Dir.pwd
+    patch_command = "patch -p1 < #{File.expand_path(patch_path)}"
+    stdout, stderr, status = Open3.capture3(patch_command)
+    if status.success?
+      puts "Successfully applied patch: #{patch_filename}"
+    else
+      puts "Failed to apply patch: #{patch_filename}"
+      puts "Error: #{stderr}"
     end
   end
-      
-puts "All patches applied"
+  end
+
+  puts "All patches applied"
 #+END_SRC
 **** Compile and install st
 #+BEGIN_SRC ruby :tangle setup.rb
-make_command = "make -C #{source_dir}"
-system(make_command)
+  make_command = "make -C #{source_dir}"
+  system(make_command)
 
-# Run make install with privilege escalation
-install_command = "#{$privilege_escalator} make -C #{source_dir} install"
+  # Run make install with privilege escalation
+  install_command = "#{$privilege_escalator} make -C #{source_dir} install"
 
-puts "Running: #{install_command}"
-system(install_command)
+  puts "Running: #{install_command}"
+  system(install_command)
 
-if $?.success?
-  puts "Installation completed successfully"
-else
-  puts "Installation failed with exit code: #{$?.exitstatus}"
-end
-
+  if $?.success?
+    puts "Installation completed successfully"
+  else
+    puts "Installation failed with exit code: #{$?.exitstatus}"
+  end
+  end
 #+END_SRC
 *** Config and config walkthrough
 **** Font
 You can use fontconfig fonts(stuff you get with fc-list) or an XLFD font name, i like the spleen font. it is the default on openBSD. can be changed with -f in the cli args
 #+BEGIN_SRC c :tangle suckless/st/config.h :mkdirp yes
-static char *font = "-misc-spleen-medium-r-normal--24-240-72-72-c-120-iso10646-1";
+  static char *font = "-misc-spleen-medium-r-normal--24-240-72-72-c-120-iso10646-1";
 #+END_SRC
 **** Padding
 borderpx is the padding
 #+BEGIN_SRC c :tangle suckless/st/config.h :mkdirp yes
-static int borderpx = 6;
+  static int borderpx = 6;
 #+END_SRC
 **** Program st launches
 This can be changed with -e in the cli args
 #+BEGIN_SRC c :tangle suckless/st/config.h :mkdirp yes
-static char *shell = "/bin/sh";
+  static char *shell = "/bin/sh";
 #+END_SRC
 **** Misc things
 Utmp is used to keep track of processes, terminal device, login time, and processes launched by a user. i dont think you should be touching this
 #+BEGIN_SRC  c :tangle suckless/st/config.h
-char *utmp = NULL;
+  char *utmp = NULL;
 #+END_SRC
 something for the suckless https://tools.suckless.org/scroll/ program. to enable use a string like "scroll"
 #+BEGIN_SRC  c :tangle suckless/st/config.h
-char *scroll = NULL;
+  char *scroll = NULL;
 #+END_SRC
 **** Stty stuff
 sets the terminal to raw mode, disables input character echoing, passes 8 bits per character, enables newline translation, disables extended input processing, disables stop bits, and sets the baud rate to 38,400. You shouldnt have to touch this
@@ -731,8 +936,8 @@ sets the terminal to raw mode, disables input character echoing, passes 8 bits p
 #+END_SRC
 **** Kerning / character bounding box multipliers
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static float cwscale = 1.0;
-static float chscale = 1.0;
+  static float cwscale = 1.0;
+  static float chscale = 1.0;
 #+END_SRC
 **** Word delimiter string
 #+BEGIN_SRC c :tangle suckless/st/config.h
@@ -743,8 +948,8 @@ static float chscale = 1.0;
 | Double click | 0.3 seconds |
 | Triple click | 0.6 seconds |
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static unsigned int doubleclicktimeout = 300;
-static unsigned int tripleclicktimeout = 600;
+  static unsigned int doubleclicktimeout = 300;
+  static unsigned int tripleclicktimeout = 600;
 #+END_SRC
 **** Alt screens
 #+BEGIN_SRC c :tangle suckless/st/config.h
@@ -756,27 +961,27 @@ this might be insecure if you set it to 1
   int allowwindowops = 0;
 #+END_SRC
 **** Latency range
- Draw latency range in milliseconds. Represents time between receiving new content/key presses  and drawing on screen. Start drawing when content stops arriving (idle state). Actual start time is usually close to minLatency, waits longer for slower updates to prevent partial rendering. Lower minLatency values may cause tearing/flickering, as they might detect idle conditions prematurely.
+Draw latency range in milliseconds. Represents time between receiving new content/key presses  and drawing on screen. Start drawing when content stops arriving (idle state). Actual start time is usually close to minLatency, waits longer for slower updates to prevent partial rendering. Lower minLatency values may cause tearing/flickering, as they might detect idle conditions prematurely.
 #+BEGIN_SRC c :tangle suckless/st/config.h
   static double minlatency = 2;
-static double maxlatency = 33;
+  static double maxlatency = 33;
 
 #+END_SRC
 **** Blink timeout
 blink timeout for the terminal blinking attribute.
 I set it to 0 because its distracting
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static unsigned int blinktimeout = 800;
+  static unsigned int blinktimeout = 800;
 #+END_SRC
 **** Thickness of cursors
 Thickness of underline and bar cursors
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static unsigned int cursorthickness = 3;
+  static unsigned int cursorthickness = 3;
 #+END_SRC
 **** Bell
 I disabled the bell cuz its distracting
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static int bellvolume = 0;
+  static int bellvolume = 0;
 #+END_SRC
 **** TERM value
 default TERM value, normal people set it to st-256color but that breaks GNU screen so i set it to   xterm-256color
@@ -789,33 +994,33 @@ default TERM value, normal people set it to st-256color but that breaks GNU scre
 #+END_SRC
 **** Colors, i use selenized-black, refer to [[ColorScheme]]
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static const char *colorname[] = {
-	"#181818",  /*  0: black    */
-	"#ed4a46",  /*  1: red      */
-	"#70b433",  /*  2: green    */
-	"#dbb32d",  /*  3: yellow   */
-	"#368aeb",  /*  4: blue     */
-	"#eb6eb7",  /*  5: magenta  */
-	"#3fc5b7",  /*  6: cyan     */
-	"#b9b9b9",  /*  7: white    */
-	"#3b3b3b",  /*  8: brblack  */
-	"#ff5e56",  /*  9: brred    */
-	"#83c746",  /* 10: brgreen  */
-	"#efc541",  /* 11: bryellow */
-	"#4f9cfe",  /* 12: brblue   */
-	"#eb6eb7",  /* 13: brmagenta*/
-	"#3fc5b7",  /* 14: brcyan   */
-	"#fdf6e3",  /* 15: brwhite  */
-};
+  static const char *colorname[] = {
+    "#181818",  /*  0: black    */
+    "#ed4a46",  /*  1: red      */
+    "#70b433",  /*  2: green    */
+    "#dbb32d",  /*  3: yellow   */
+    "#368aeb",  /*  4: blue     */
+    "#eb6eb7",  /*  5: magenta  */
+    "#3fc5b7",  /*  6: cyan     */
+    "#b9b9b9",  /*  7: white    */
+    "#3b3b3b",  /*  8: brblack  */
+    "#ff5e56",  /*  9: brred    */
+    "#83c746",  /* 10: brgreen  */
+    "#efc541",  /* 11: bryellow */
+    "#4f9cfe",  /* 12: brblue   */
+    "#eb6eb7",  /* 13: brmagenta*/
+    "#3fc5b7",  /* 14: brcyan   */
+    "#fdf6e3",  /* 15: brwhite  */
+  };
 
 #+END_SRC
 Default colors(colorname index)
 background, foreground, cursor, and reverse cursor
 #+BEGIN_SRC c :tangle suckless/st/config.h
-unsigned int defaultfg = 15;
-unsigned int defaultbg = 0;
-unsigned int defaultcs = 7;
-static unsigned int defaultrcs = 15;
+  unsigned int defaultfg = 15;
+  unsigned int defaultbg = 0;
+  unsigned int defaultcs = 7;
+  static unsigned int defaultrcs = 15;
 #+END_SRC
 **** Cursor shape
 2. Block █
@@ -824,31 +1029,31 @@ static unsigned int defaultrcs = 15;
 7. Snowman ☃
 UNDERLNE IS THE BEST AWEWFAWF
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static unsigned int cursorshape = 4;
+  static unsigned int cursorshape = 4;
 #+END_SRC
   
 **** Cols and rows
 default cols and rows
 #+BEGIN_SRC c :tangle suckless/st/config.h
-  
-static unsigned int cols = 80;
-static unsigned int rows = 24;
+    
+  static unsigned int cols = 80;
+  static unsigned int rows = 24;
 
 #+END_SRC
 **** Mouse shape and color
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static unsigned int mouseshape = XC_xterm;
-static unsigned int mousefg = 7;
-static unsigned int mousebg = 0;
+  static unsigned int mouseshape = XC_xterm;
+  static unsigned int mousefg = 7;
+  static unsigned int mousebg = 0;
 #+END_SRC
 **** Color used to display font attributes when fontconfig selected a font that doesnt match the one requested
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static unsigned int defaultattr = 11;
+  static unsigned int defaultattr = 11;
 #+END_SRC
 **** mouseMod
 forces mouse select/shortcuts when this key is pressed.
 #+BEGIN_SRC c :tangle suckless/st/config.h
-static uint forcemousemod = ShiftMask;
+  static uint forcemousemod = ShiftMask;
 #+END_SRC
 **** Mouse binds
 | Middle click        | Paste from clipboard               |
@@ -857,22 +1062,22 @@ static uint forcemousemod = ShiftMask;
 | Scroll Down         | Send terminal sequence "\005"      |
 | Scroll up           | Send terminal sequence "\033[5;2~" |
 #+BEGIN_SRC c :tangle suckless/st/config.h
-   static MouseShortcut mshortcuts[] = {
-	/* mask                 button   function        argument       release */
-	{ XK_ANY_MOD,           Button2, clippaste,       {.i = 0},      1 },
-	{ ShiftMask,            Button4, ttysend,        {.s = "\033[5;2~"} },
-	{ XK_ANY_MOD,           Button4, ttysend,        {.s = "\031"} },
-	{ ShiftMask,            Button5, ttysend,        {.s = "\033[6;2~"} },
-	{ XK_ANY_MOD,           Button5, ttysend,        {.s = "\005"} },
+  static MouseShortcut mshortcuts[] = {
+    /* mask                 button   function        argument       release */
+    { XK_ANY_MOD,           Button2, clippaste,       {.i = 0},      1 },
+    { ShiftMask,            Button4, ttysend,        {.s = "\033[5;2~"} },
+    { XK_ANY_MOD,           Button4, ttysend,        {.s = "\031"} },
+    { ShiftMask,            Button5, ttysend,        {.s = "\033[6;2~"} },
+    { XK_ANY_MOD,           Button5, ttysend,        {.s = "\005"} },
 
-};
+  };
 
 #+END_SRC
 **** Normal keys
 Set  ctrl to modkey and ctrl+shift to TERMMOD
 #+BEGIN_SRC c :tangle suckless/st/config.h
   #define MODKEY Mod1Mask
-#define TERMMOD (ControlMask|ShiftMask)
+  #define TERMMOD (ControlMask|ShiftMask)
 #+END_SRC
 | Any + Break                     | Send break              |
 | Ctrl + Print Screen             | Toggle printer          |
@@ -890,297 +1095,297 @@ Set  ctrl to modkey and ctrl+shift to TERMMOD
 | Shift + Page Down               | Scroll down             |
 #+BEGIN_SRC c :tangle suckless/st/config.h
 
-static Shortcut shortcuts[] = {
-	/* mask                 keysym          function        argument */
-	{ XK_ANY_MOD,           XK_Break,       sendbreak,      {.i =  0} },
-	{ ControlMask,          XK_Print,       toggleprinter,  {.i =  0} },
-	{ ShiftMask,            XK_Print,       printscreen,    {.i =  0} },
-	{ XK_ANY_MOD,           XK_Print,       printsel,       {.i =  0} },
-	{ TERMMOD,              XK_Prior,       zoom,           {.f = +1} },
-	{ TERMMOD,              XK_Next,        zoom,           {.f = -1} },
-	{ TERMMOD,              XK_Home,        zoomreset,      {.f =  0} },
-	{ TERMMOD,              XK_C,           clipcopy,       {.i =  0} },
-	{ TERMMOD,              XK_V,           clippaste,      {.i =  0} },
-	{ TERMMOD,              XK_Y,           selpaste,       {.i =  0} },
-	{ ShiftMask,            XK_Insert,      selpaste,       {.i =  0} },
-	{ TERMMOD,              XK_Num_Lock,    numlock,        {.i =  0} },
-	{ ShiftMask,            XK_Page_Up,     kscrollup,      {.i = -1} },
-	{ ShiftMask,            XK_Page_Down,   kscrolldown,    {.i = -1} },
-};
+  static Shortcut shortcuts[] = {
+    /* mask                 keysym          function        argument */
+    { XK_ANY_MOD,           XK_Break,       sendbreak,      {.i =  0} },
+    { ControlMask,          XK_Print,       toggleprinter,  {.i =  0} },
+    { ShiftMask,            XK_Print,       printscreen,    {.i =  0} },
+    { XK_ANY_MOD,           XK_Print,       printsel,       {.i =  0} },
+    { TERMMOD,              XK_Prior,       zoom,           {.f = +1} },
+    { TERMMOD,              XK_Next,        zoom,           {.f = -1} },
+    { TERMMOD,              XK_Home,        zoomreset,      {.f =  0} },
+    { TERMMOD,              XK_C,           clipcopy,       {.i =  0} },
+    { TERMMOD,              XK_V,           clippaste,      {.i =  0} },
+    { TERMMOD,              XK_Y,           selpaste,       {.i =  0} },
+    { ShiftMask,            XK_Insert,      selpaste,       {.i =  0} },
+    { TERMMOD,              XK_Num_Lock,    numlock,        {.i =  0} },
+    { ShiftMask,            XK_Page_Up,     kscrollup,      {.i = -1} },
+    { ShiftMask,            XK_Page_Down,   kscrolldown,    {.i = -1} },
+  };
 
 #+END_SRC
 **** STUFF YOU SERIOUSLY SHOULDNT TOUCH
 please dont touch any of these, its an easy way to break ur st.
 #+BEGIN_SRC c :tangle suckless/st/config.h
- /* 
- * Special keys (change & recompile st.info accordingly)
- *
- * Mask value:
- * * Use XK_ANY_MOD to match the key no matter modifiers state
- * * Use XK_NO_MOD to match the key alone (no modifiers)
- * appkey value:
- * * 0: no value
- * * > 0: keypad application mode enabled
- * *   = 2: term.numlock = 1
- * * < 0: keypad application mode disabled
- * appcursor value:
- * * 0: no value
- * * > 0: cursor application mode enabled
- * * < 0: cursor application mode disabled
- *
- * Be careful with the order of the definitions because st searches in
- * this table sequentially, so any XK_ANY_MOD must be in the last
- * position for a key.
- */
+  /* 
+   ,* Special keys (change & recompile st.info accordingly)
+   ,*
+   ,* Mask value:
+   ,* * Use XK_ANY_MOD to match the key no matter modifiers state
+   ,* * Use XK_NO_MOD to match the key alone (no modifiers)
+   ,* appkey value:
+   ,* * 0: no value
+   ,* * > 0: keypad application mode enabled
+   ,* *   = 2: term.numlock = 1
+   ,* * < 0: keypad application mode disabled
+   ,* appcursor value:
+   ,* * 0: no value
+   ,* * > 0: cursor application mode enabled
+   ,* * < 0: cursor application mode disabled
+   ,*
+   ,* Be careful with the order of the definitions because st searches in
+   ,* this table sequentially, so any XK_ANY_MOD must be in the last
+   ,* position for a key.
+   ,*/
 
-/*
- * If you want keys other than the X11 function keys (0xFD00 - 0xFFFF)
- * to be mapped below, add them to this array.
- */
-static KeySym mappedkeys[] = { -1 };
+  /*
+   ,* If you want keys other than the X11 function keys (0xFD00 - 0xFFFF)
+   ,* to be mapped below, add them to this array.
+   ,*/
+  static KeySym mappedkeys[] = { -1 };
 
-/*
- * State bits to ignore when matching key or button events.  By default,
- * numlock (Mod2Mask) and keyboard layout (XK_SWITCH_MOD) are ignored.
- */
-static uint ignoremod = Mod2Mask|XK_SWITCH_MOD;
+  /*
+   ,* State bits to ignore when matching key or button events.  By default,
+   ,* numlock (Mod2Mask) and keyboard layout (XK_SWITCH_MOD) are ignored.
+   ,*/
+  static uint ignoremod = Mod2Mask|XK_SWITCH_MOD;
 
-/*
- * This is the huge key array which defines all compatibility to the Linux
- * world. Please decide about changes wisely.
- */
-static Key key[] = {
-	/* keysym           mask            string      appkey appcursor */
-	{ XK_KP_Home,       ShiftMask,      "\033[2J",       0,   -1},
-	{ XK_KP_Home,       ShiftMask,      "\033[1;2H",     0,   +1},
-	{ XK_KP_Home,       XK_ANY_MOD,     "\033[H",        0,   -1},
-	{ XK_KP_Home,       XK_ANY_MOD,     "\033[1~",       0,   +1},
-	{ XK_KP_Up,         XK_ANY_MOD,     "\033Ox",       +1,    0},
-	{ XK_KP_Up,         XK_ANY_MOD,     "\033[A",        0,   -1},
-	{ XK_KP_Up,         XK_ANY_MOD,     "\033OA",        0,   +1},
-	{ XK_KP_Down,       XK_ANY_MOD,     "\033Or",       +1,    0},
-	{ XK_KP_Down,       XK_ANY_MOD,     "\033[B",        0,   -1},
-	{ XK_KP_Down,       XK_ANY_MOD,     "\033OB",        0,   +1},
-	{ XK_KP_Left,       XK_ANY_MOD,     "\033Ot",       +1,    0},
-	{ XK_KP_Left,       XK_ANY_MOD,     "\033[D",        0,   -1},
-	{ XK_KP_Left,       XK_ANY_MOD,     "\033OD",        0,   +1},
-	{ XK_KP_Right,      XK_ANY_MOD,     "\033Ov",       +1,    0},
-	{ XK_KP_Right,      XK_ANY_MOD,     "\033[C",        0,   -1},
-	{ XK_KP_Right,      XK_ANY_MOD,     "\033OC",        0,   +1},
-	{ XK_KP_Prior,      ShiftMask,      "\033[5;2~",     0,    0},
-	{ XK_KP_Prior,      XK_ANY_MOD,     "\033[5~",       0,    0},
-	{ XK_KP_Begin,      XK_ANY_MOD,     "\033[E",        0,    0},
-	{ XK_KP_End,        ControlMask,    "\033[J",       -1,    0},
-	{ XK_KP_End,        ControlMask,    "\033[1;5F",    +1,    0},
-	{ XK_KP_End,        ShiftMask,      "\033[K",       -1,    0},
-	{ XK_KP_End,        ShiftMask,      "\033[1;2F",    +1,    0},
-	{ XK_KP_End,        XK_ANY_MOD,     "\033[4~",       0,    0},
-	{ XK_KP_Next,       ShiftMask,      "\033[6;2~",     0,    0},
-	{ XK_KP_Next,       XK_ANY_MOD,     "\033[6~",       0,    0},
-	{ XK_KP_Insert,     ShiftMask,      "\033[2;2~",    +1,    0},
-	{ XK_KP_Insert,     ShiftMask,      "\033[4l",      -1,    0},
-	{ XK_KP_Insert,     ControlMask,    "\033[L",       -1,    0},
-	{ XK_KP_Insert,     ControlMask,    "\033[2;5~",    +1,    0},
-	{ XK_KP_Insert,     XK_ANY_MOD,     "\033[4h",      -1,    0},
-	{ XK_KP_Insert,     XK_ANY_MOD,     "\033[2~",      +1,    0},
-	{ XK_KP_Delete,     ControlMask,    "\033[M",       -1,    0},
-	{ XK_KP_Delete,     ControlMask,    "\033[3;5~",    +1,    0},
-	{ XK_KP_Delete,     ShiftMask,      "\033[2K",      -1,    0},
-	{ XK_KP_Delete,     ShiftMask,      "\033[3;2~",    +1,    0},
-	{ XK_KP_Delete,     XK_ANY_MOD,     "\033[P",       -1,    0},
-	{ XK_KP_Delete,     XK_ANY_MOD,     "\033[3~",      +1,    0},
-	{ XK_KP_Multiply,   XK_ANY_MOD,     "\033Oj",       +2,    0},
-	{ XK_KP_Add,        XK_ANY_MOD,     "\033Ok",       +2,    0},
-	{ XK_KP_Enter,      XK_ANY_MOD,     "\033OM",       +2,    0},
-	{ XK_KP_Enter,      XK_ANY_MOD,     "\r",           -1,    0},
-	{ XK_KP_Subtract,   XK_ANY_MOD,     "\033Om",       +2,    0},
-	{ XK_KP_Decimal,    XK_ANY_MOD,     "\033On",       +2,    0},
-	{ XK_KP_Divide,     XK_ANY_MOD,     "\033Oo",       +2,    0},
-	{ XK_KP_0,          XK_ANY_MOD,     "\033Op",       +2,    0},
-	{ XK_KP_1,          XK_ANY_MOD,     "\033Oq",       +2,    0},
-	{ XK_KP_2,          XK_ANY_MOD,     "\033Or",       +2,    0},
-	{ XK_KP_3,          XK_ANY_MOD,     "\033Os",       +2,    0},
-	{ XK_KP_4,          XK_ANY_MOD,     "\033Ot",       +2,    0},
-	{ XK_KP_5,          XK_ANY_MOD,     "\033Ou",       +2,    0},
-	{ XK_KP_6,          XK_ANY_MOD,     "\033Ov",       +2,    0},
-	{ XK_KP_7,          XK_ANY_MOD,     "\033Ow",       +2,    0},
-	{ XK_KP_8,          XK_ANY_MOD,     "\033Ox",       +2,    0},
-	{ XK_KP_9,          XK_ANY_MOD,     "\033Oy",       +2,    0},
-	{ XK_Up,            ShiftMask,      "\033[1;2A",     0,    0},
-	{ XK_Up,            Mod1Mask,       "\033[1;3A",     0,    0},
-	{ XK_Up,         ShiftMask|Mod1Mask,"\033[1;4A",     0,    0},
-	{ XK_Up,            ControlMask,    "\033[1;5A",     0,    0},
-	{ XK_Up,      ShiftMask|ControlMask,"\033[1;6A",     0,    0},
-	{ XK_Up,       ControlMask|Mod1Mask,"\033[1;7A",     0,    0},
-	{ XK_Up,ShiftMask|ControlMask|Mod1Mask,"\033[1;8A",  0,    0},
-	{ XK_Up,            XK_ANY_MOD,     "\033[A",        0,   -1},
-	{ XK_Up,            XK_ANY_MOD,     "\033OA",        0,   +1},
-	{ XK_Down,          ShiftMask,      "\033[1;2B",     0,    0},
-	{ XK_Down,          Mod1Mask,       "\033[1;3B",     0,    0},
-	{ XK_Down,       ShiftMask|Mod1Mask,"\033[1;4B",     0,    0},
-	{ XK_Down,          ControlMask,    "\033[1;5B",     0,    0},
-	{ XK_Down,    ShiftMask|ControlMask,"\033[1;6B",     0,    0},
-	{ XK_Down,     ControlMask|Mod1Mask,"\033[1;7B",     0,    0},
-	{ XK_Down,ShiftMask|ControlMask|Mod1Mask,"\033[1;8B",0,    0},
-	{ XK_Down,          XK_ANY_MOD,     "\033[B",        0,   -1},
-	{ XK_Down,          XK_ANY_MOD,     "\033OB",        0,   +1},
-	{ XK_Left,          ShiftMask,      "\033[1;2D",     0,    0},
-	{ XK_Left,          Mod1Mask,       "\033[1;3D",     0,    0},
-	{ XK_Left,       ShiftMask|Mod1Mask,"\033[1;4D",     0,    0},
-	{ XK_Left,          ControlMask,    "\033[1;5D",     0,    0},
-	{ XK_Left,    ShiftMask|ControlMask,"\033[1;6D",     0,    0},
-	{ XK_Left,     ControlMask|Mod1Mask,"\033[1;7D",     0,    0},
-	{ XK_Left,ShiftMask|ControlMask|Mod1Mask,"\033[1;8D",0,    0},
-	{ XK_Left,          XK_ANY_MOD,     "\033[D",        0,   -1},
-	{ XK_Left,          XK_ANY_MOD,     "\033OD",        0,   +1},
-	{ XK_Right,         ShiftMask,      "\033[1;2C",     0,    0},
-	{ XK_Right,         Mod1Mask,       "\033[1;3C",     0,    0},
-	{ XK_Right,      ShiftMask|Mod1Mask,"\033[1;4C",     0,    0},
-	{ XK_Right,         ControlMask,    "\033[1;5C",     0,    0},
-	{ XK_Right,   ShiftMask|ControlMask,"\033[1;6C",     0,    0},
-	{ XK_Right,    ControlMask|Mod1Mask,"\033[1;7C",     0,    0},
-	{ XK_Right,ShiftMask|ControlMask|Mod1Mask,"\033[1;8C",0,   0},
-	{ XK_Right,         XK_ANY_MOD,     "\033[C",        0,   -1},
-	{ XK_Right,         XK_ANY_MOD,     "\033OC",        0,   +1},
-	{ XK_ISO_Left_Tab,  ShiftMask,      "\033[Z",        0,    0},
-	{ XK_Return,        Mod1Mask,       "\033\r",        0,    0},
-	{ XK_Return,        XK_ANY_MOD,     "\r",            0,    0},
-	{ XK_Insert,        ShiftMask,      "\033[4l",      -1,    0},
-	{ XK_Insert,        ShiftMask,      "\033[2;2~",    +1,    0},
-	{ XK_Insert,        ControlMask,    "\033[L",       -1,    0},
-	{ XK_Insert,        ControlMask,    "\033[2;5~",    +1,    0},
-	{ XK_Insert,        XK_ANY_MOD,     "\033[4h",      -1,    0},
-	{ XK_Insert,        XK_ANY_MOD,     "\033[2~",      +1,    0},
-	{ XK_Delete,        ControlMask,    "\033[M",       -1,    0},
-	{ XK_Delete,        ControlMask,    "\033[3;5~",    +1,    0},
-	{ XK_Delete,        ShiftMask,      "\033[2K",      -1,    0},
-	{ XK_Delete,        ShiftMask,      "\033[3;2~",    +1,    0},
-	{ XK_Delete,        XK_ANY_MOD,     "\033[P",       -1,    0},
-	{ XK_Delete,        XK_ANY_MOD,     "\033[3~",      +1,    0},
-	{ XK_BackSpace,     XK_NO_MOD,      "\177",          0,    0},
-	{ XK_BackSpace,     Mod1Mask,       "\033\177",      0,    0},
-	{ XK_Home,          ShiftMask,      "\033[2J",       0,   -1},
-	{ XK_Home,          ShiftMask,      "\033[1;2H",     0,   +1},
-	{ XK_Home,          XK_ANY_MOD,     "\033[H",        0,   -1},
-	{ XK_Home,          XK_ANY_MOD,     "\033[1~",       0,   +1},
-	{ XK_End,           ControlMask,    "\033[J",       -1,    0},
-	{ XK_End,           ControlMask,    "\033[1;5F",    +1,    0},
-	{ XK_End,           ShiftMask,      "\033[K",       -1,    0},
-	{ XK_End,           ShiftMask,      "\033[1;2F",    +1,    0},
-	{ XK_End,           XK_ANY_MOD,     "\033[4~",       0,    0},
-	{ XK_Prior,         ControlMask,    "\033[5;5~",     0,    0},
-	{ XK_Prior,         ShiftMask,      "\033[5;2~",     0,    0},
-	{ XK_Prior,         XK_ANY_MOD,     "\033[5~",       0,    0},
-	{ XK_Next,          ControlMask,    "\033[6;5~",     0,    0},
-	{ XK_Next,          ShiftMask,      "\033[6;2~",     0,    0},
-	{ XK_Next,          XK_ANY_MOD,     "\033[6~",       0,    0},
-	{ XK_F1,            XK_NO_MOD,      "\033OP" ,       0,    0},
-	{ XK_F1, /* F13 */  ShiftMask,      "\033[1;2P",     0,    0},
-	{ XK_F1, /* F25 */  ControlMask,    "\033[1;5P",     0,    0},
-	{ XK_F1, /* F37 */  Mod4Mask,       "\033[1;6P",     0,    0},
-	{ XK_F1, /* F49 */  Mod1Mask,       "\033[1;3P",     0,    0},
-	{ XK_F1, /* F61 */  Mod3Mask,       "\033[1;4P",     0,    0},
-	{ XK_F2,            XK_NO_MOD,      "\033OQ" ,       0,    0},
-	{ XK_F2, /* F14 */  ShiftMask,      "\033[1;2Q",     0,    0},
-	{ XK_F2, /* F26 */  ControlMask,    "\033[1;5Q",     0,    0},
-	{ XK_F2, /* F38 */  Mod4Mask,       "\033[1;6Q",     0,    0},
-	{ XK_F2, /* F50 */  Mod1Mask,       "\033[1;3Q",     0,    0},
-	{ XK_F2, /* F62 */  Mod3Mask,       "\033[1;4Q",     0,    0},
-	{ XK_F3,            XK_NO_MOD,      "\033OR" ,       0,    0},
-	{ XK_F3, /* F15 */  ShiftMask,      "\033[1;2R",     0,    0},
-	{ XK_F3, /* F27 */  ControlMask,    "\033[1;5R",     0,    0},
-	{ XK_F3, /* F39 */  Mod4Mask,       "\033[1;6R",     0,    0},
-	{ XK_F3, /* F51 */  Mod1Mask,       "\033[1;3R",     0,    0},
-	{ XK_F3, /* F63 */  Mod3Mask,       "\033[1;4R",     0,    0},
-	{ XK_F4,            XK_NO_MOD,      "\033OS" ,       0,    0},
-	{ XK_F4, /* F16 */  ShiftMask,      "\033[1;2S",     0,    0},
-	{ XK_F4, /* F28 */  ControlMask,    "\033[1;5S",     0,    0},
-	{ XK_F4, /* F40 */  Mod4Mask,       "\033[1;6S",     0,    0},
-	{ XK_F4, /* F52 */  Mod1Mask,       "\033[1;3S",     0,    0},
-	{ XK_F5,            XK_NO_MOD,      "\033[15~",      0,    0},
-	{ XK_F5, /* F17 */  ShiftMask,      "\033[15;2~",    0,    0},
-	{ XK_F5, /* F29 */  ControlMask,    "\033[15;5~",    0,    0},
-	{ XK_F5, /* F41 */  Mod4Mask,       "\033[15;6~",    0,    0},
-	{ XK_F5, /* F53 */  Mod1Mask,       "\033[15;3~",    0,    0},
-	{ XK_F6,            XK_NO_MOD,      "\033[17~",      0,    0},
-	{ XK_F6, /* F18 */  ShiftMask,      "\033[17;2~",    0,    0},
-	{ XK_F6, /* F30 */  ControlMask,    "\033[17;5~",    0,    0},
-	{ XK_F6, /* F42 */  Mod4Mask,       "\033[17;6~",    0,    0},
-	{ XK_F6, /* F54 */  Mod1Mask,       "\033[17;3~",    0,    0},
-	{ XK_F7,            XK_NO_MOD,      "\033[18~",      0,    0},
-	{ XK_F7, /* F19 */  ShiftMask,      "\033[18;2~",    0,    0},
-	{ XK_F7, /* F31 */  ControlMask,    "\033[18;5~",    0,    0},
-	{ XK_F7, /* F43 */  Mod4Mask,       "\033[18;6~",    0,    0},
-	{ XK_F7, /* F55 */  Mod1Mask,       "\033[18;3~",    0,    0},
-	{ XK_F8,            XK_NO_MOD,      "\033[19~",      0,    0},
-	{ XK_F8, /* F20 */  ShiftMask,      "\033[19;2~",    0,    0},
-	{ XK_F8, /* F32 */  ControlMask,    "\033[19;5~",    0,    0},
-	{ XK_F8, /* F44 */  Mod4Mask,       "\033[19;6~",    0,    0},
-	{ XK_F8, /* F56 */  Mod1Mask,       "\033[19;3~",    0,    0},
-	{ XK_F9,            XK_NO_MOD,      "\033[20~",      0,    0},
-	{ XK_F9, /* F21 */  ShiftMask,      "\033[20;2~",    0,    0},
-	{ XK_F9, /* F33 */  ControlMask,    "\033[20;5~",    0,    0},
-	{ XK_F9, /* F45 */  Mod4Mask,       "\033[20;6~",    0,    0},
-	{ XK_F9, /* F57 */  Mod1Mask,       "\033[20;3~",    0,    0},
-	{ XK_F10,           XK_NO_MOD,      "\033[21~",      0,    0},
-	{ XK_F10, /* F22 */ ShiftMask,      "\033[21;2~",    0,    0},
-	{ XK_F10, /* F34 */ ControlMask,    "\033[21;5~",    0,    0},
-	{ XK_F10, /* F46 */ Mod4Mask,       "\033[21;6~",    0,    0},
-	{ XK_F10, /* F58 */ Mod1Mask,       "\033[21;3~",    0,    0},
-	{ XK_F11,           XK_NO_MOD,      "\033[23~",      0,    0},
-	{ XK_F11, /* F23 */ ShiftMask,      "\033[23;2~",    0,    0},
-	{ XK_F11, /* F35 */ ControlMask,    "\033[23;5~",    0,    0},
-	{ XK_F11, /* F47 */ Mod4Mask,       "\033[23;6~",    0,    0},
-	{ XK_F11, /* F59 */ Mod1Mask,       "\033[23;3~",    0,    0},
-	{ XK_F12,           XK_NO_MOD,      "\033[24~",      0,    0},
-	{ XK_F12, /* F24 */ ShiftMask,      "\033[24;2~",    0,    0},
-	{ XK_F12, /* F36 */ ControlMask,    "\033[24;5~",    0,    0},
-	{ XK_F12, /* F48 */ Mod4Mask,       "\033[24;6~",    0,    0},
-	{ XK_F12, /* F60 */ Mod1Mask,       "\033[24;3~",    0,    0},
-	{ XK_F13,           XK_NO_MOD,      "\033[1;2P",     0,    0},
-	{ XK_F14,           XK_NO_MOD,      "\033[1;2Q",     0,    0},
-	{ XK_F15,           XK_NO_MOD,      "\033[1;2R",     0,    0},
-	{ XK_F16,           XK_NO_MOD,      "\033[1;2S",     0,    0},
-	{ XK_F17,           XK_NO_MOD,      "\033[15;2~",    0,    0},
-	{ XK_F18,           XK_NO_MOD,      "\033[17;2~",    0,    0},
-	{ XK_F19,           XK_NO_MOD,      "\033[18;2~",    0,    0},
-	{ XK_F20,           XK_NO_MOD,      "\033[19;2~",    0,    0},
-	{ XK_F21,           XK_NO_MOD,      "\033[20;2~",    0,    0},
-	{ XK_F22,           XK_NO_MOD,      "\033[21;2~",    0,    0},
-	{ XK_F23,           XK_NO_MOD,      "\033[23;2~",    0,    0},
-	{ XK_F24,           XK_NO_MOD,      "\033[24;2~",    0,    0},
-	{ XK_F25,           XK_NO_MOD,      "\033[1;5P",     0,    0},
-	{ XK_F26,           XK_NO_MOD,      "\033[1;5Q",     0,    0},
-	{ XK_F27,           XK_NO_MOD,      "\033[1;5R",     0,    0},
-	{ XK_F28,           XK_NO_MOD,      "\033[1;5S",     0,    0},
-	{ XK_F29,           XK_NO_MOD,      "\033[15;5~",    0,    0},
-	{ XK_F30,           XK_NO_MOD,      "\033[17;5~",    0,    0},
-	{ XK_F31,           XK_NO_MOD,      "\033[18;5~",    0,    0},
-	{ XK_F32,           XK_NO_MOD,      "\033[19;5~",    0,    0},
-	{ XK_F33,           XK_NO_MOD,      "\033[20;5~",    0,    0},
-	{ XK_F34,           XK_NO_MOD,      "\033[21;5~",    0,    0},
-	{ XK_F35,           XK_NO_MOD,      "\033[23;5~",    0,    0},
-};
+  /*
+   ,* This is the huge key array which defines all compatibility to the Linux
+   ,* world. Please decide about changes wisely.
+   ,*/
+  static Key key[] = {
+    /* keysym           mask            string      appkey appcursor */
+    { XK_KP_Home,       ShiftMask,      "\033[2J",       0,   -1},
+    { XK_KP_Home,       ShiftMask,      "\033[1;2H",     0,   +1},
+    { XK_KP_Home,       XK_ANY_MOD,     "\033[H",        0,   -1},
+    { XK_KP_Home,       XK_ANY_MOD,     "\033[1~",       0,   +1},
+    { XK_KP_Up,         XK_ANY_MOD,     "\033Ox",       +1,    0},
+    { XK_KP_Up,         XK_ANY_MOD,     "\033[A",        0,   -1},
+    { XK_KP_Up,         XK_ANY_MOD,     "\033OA",        0,   +1},
+    { XK_KP_Down,       XK_ANY_MOD,     "\033Or",       +1,    0},
+    { XK_KP_Down,       XK_ANY_MOD,     "\033[B",        0,   -1},
+    { XK_KP_Down,       XK_ANY_MOD,     "\033OB",        0,   +1},
+    { XK_KP_Left,       XK_ANY_MOD,     "\033Ot",       +1,    0},
+    { XK_KP_Left,       XK_ANY_MOD,     "\033[D",        0,   -1},
+    { XK_KP_Left,       XK_ANY_MOD,     "\033OD",        0,   +1},
+    { XK_KP_Right,      XK_ANY_MOD,     "\033Ov",       +1,    0},
+    { XK_KP_Right,      XK_ANY_MOD,     "\033[C",        0,   -1},
+    { XK_KP_Right,      XK_ANY_MOD,     "\033OC",        0,   +1},
+    { XK_KP_Prior,      ShiftMask,      "\033[5;2~",     0,    0},
+    { XK_KP_Prior,      XK_ANY_MOD,     "\033[5~",       0,    0},
+    { XK_KP_Begin,      XK_ANY_MOD,     "\033[E",        0,    0},
+    { XK_KP_End,        ControlMask,    "\033[J",       -1,    0},
+    { XK_KP_End,        ControlMask,    "\033[1;5F",    +1,    0},
+    { XK_KP_End,        ShiftMask,      "\033[K",       -1,    0},
+    { XK_KP_End,        ShiftMask,      "\033[1;2F",    +1,    0},
+    { XK_KP_End,        XK_ANY_MOD,     "\033[4~",       0,    0},
+    { XK_KP_Next,       ShiftMask,      "\033[6;2~",     0,    0},
+    { XK_KP_Next,       XK_ANY_MOD,     "\033[6~",       0,    0},
+    { XK_KP_Insert,     ShiftMask,      "\033[2;2~",    +1,    0},
+    { XK_KP_Insert,     ShiftMask,      "\033[4l",      -1,    0},
+    { XK_KP_Insert,     ControlMask,    "\033[L",       -1,    0},
+    { XK_KP_Insert,     ControlMask,    "\033[2;5~",    +1,    0},
+    { XK_KP_Insert,     XK_ANY_MOD,     "\033[4h",      -1,    0},
+    { XK_KP_Insert,     XK_ANY_MOD,     "\033[2~",      +1,    0},
+    { XK_KP_Delete,     ControlMask,    "\033[M",       -1,    0},
+    { XK_KP_Delete,     ControlMask,    "\033[3;5~",    +1,    0},
+    { XK_KP_Delete,     ShiftMask,      "\033[2K",      -1,    0},
+    { XK_KP_Delete,     ShiftMask,      "\033[3;2~",    +1,    0},
+    { XK_KP_Delete,     XK_ANY_MOD,     "\033[P",       -1,    0},
+    { XK_KP_Delete,     XK_ANY_MOD,     "\033[3~",      +1,    0},
+    { XK_KP_Multiply,   XK_ANY_MOD,     "\033Oj",       +2,    0},
+    { XK_KP_Add,        XK_ANY_MOD,     "\033Ok",       +2,    0},
+    { XK_KP_Enter,      XK_ANY_MOD,     "\033OM",       +2,    0},
+    { XK_KP_Enter,      XK_ANY_MOD,     "\r",           -1,    0},
+    { XK_KP_Subtract,   XK_ANY_MOD,     "\033Om",       +2,    0},
+    { XK_KP_Decimal,    XK_ANY_MOD,     "\033On",       +2,    0},
+    { XK_KP_Divide,     XK_ANY_MOD,     "\033Oo",       +2,    0},
+    { XK_KP_0,          XK_ANY_MOD,     "\033Op",       +2,    0},
+    { XK_KP_1,          XK_ANY_MOD,     "\033Oq",       +2,    0},
+    { XK_KP_2,          XK_ANY_MOD,     "\033Or",       +2,    0},
+    { XK_KP_3,          XK_ANY_MOD,     "\033Os",       +2,    0},
+    { XK_KP_4,          XK_ANY_MOD,     "\033Ot",       +2,    0},
+    { XK_KP_5,          XK_ANY_MOD,     "\033Ou",       +2,    0},
+    { XK_KP_6,          XK_ANY_MOD,     "\033Ov",       +2,    0},
+    { XK_KP_7,          XK_ANY_MOD,     "\033Ow",       +2,    0},
+    { XK_KP_8,          XK_ANY_MOD,     "\033Ox",       +2,    0},
+    { XK_KP_9,          XK_ANY_MOD,     "\033Oy",       +2,    0},
+    { XK_Up,            ShiftMask,      "\033[1;2A",     0,    0},
+    { XK_Up,            Mod1Mask,       "\033[1;3A",     0,    0},
+    { XK_Up,         ShiftMask|Mod1Mask,"\033[1;4A",     0,    0},
+    { XK_Up,            ControlMask,    "\033[1;5A",     0,    0},
+    { XK_Up,      ShiftMask|ControlMask,"\033[1;6A",     0,    0},
+    { XK_Up,       ControlMask|Mod1Mask,"\033[1;7A",     0,    0},
+    { XK_Up,ShiftMask|ControlMask|Mod1Mask,"\033[1;8A",  0,    0},
+    { XK_Up,            XK_ANY_MOD,     "\033[A",        0,   -1},
+    { XK_Up,            XK_ANY_MOD,     "\033OA",        0,   +1},
+    { XK_Down,          ShiftMask,      "\033[1;2B",     0,    0},
+    { XK_Down,          Mod1Mask,       "\033[1;3B",     0,    0},
+    { XK_Down,       ShiftMask|Mod1Mask,"\033[1;4B",     0,    0},
+    { XK_Down,          ControlMask,    "\033[1;5B",     0,    0},
+    { XK_Down,    ShiftMask|ControlMask,"\033[1;6B",     0,    0},
+    { XK_Down,     ControlMask|Mod1Mask,"\033[1;7B",     0,    0},
+    { XK_Down,ShiftMask|ControlMask|Mod1Mask,"\033[1;8B",0,    0},
+    { XK_Down,          XK_ANY_MOD,     "\033[B",        0,   -1},
+    { XK_Down,          XK_ANY_MOD,     "\033OB",        0,   +1},
+    { XK_Left,          ShiftMask,      "\033[1;2D",     0,    0},
+    { XK_Left,          Mod1Mask,       "\033[1;3D",     0,    0},
+    { XK_Left,       ShiftMask|Mod1Mask,"\033[1;4D",     0,    0},
+    { XK_Left,          ControlMask,    "\033[1;5D",     0,    0},
+    { XK_Left,    ShiftMask|ControlMask,"\033[1;6D",     0,    0},
+    { XK_Left,     ControlMask|Mod1Mask,"\033[1;7D",     0,    0},
+    { XK_Left,ShiftMask|ControlMask|Mod1Mask,"\033[1;8D",0,    0},
+    { XK_Left,          XK_ANY_MOD,     "\033[D",        0,   -1},
+    { XK_Left,          XK_ANY_MOD,     "\033OD",        0,   +1},
+    { XK_Right,         ShiftMask,      "\033[1;2C",     0,    0},
+    { XK_Right,         Mod1Mask,       "\033[1;3C",     0,    0},
+    { XK_Right,      ShiftMask|Mod1Mask,"\033[1;4C",     0,    0},
+    { XK_Right,         ControlMask,    "\033[1;5C",     0,    0},
+    { XK_Right,   ShiftMask|ControlMask,"\033[1;6C",     0,    0},
+    { XK_Right,    ControlMask|Mod1Mask,"\033[1;7C",     0,    0},
+    { XK_Right,ShiftMask|ControlMask|Mod1Mask,"\033[1;8C",0,   0},
+    { XK_Right,         XK_ANY_MOD,     "\033[C",        0,   -1},
+    { XK_Right,         XK_ANY_MOD,     "\033OC",        0,   +1},
+    { XK_ISO_Left_Tab,  ShiftMask,      "\033[Z",        0,    0},
+    { XK_Return,        Mod1Mask,       "\033\r",        0,    0},
+    { XK_Return,        XK_ANY_MOD,     "\r",            0,    0},
+    { XK_Insert,        ShiftMask,      "\033[4l",      -1,    0},
+    { XK_Insert,        ShiftMask,      "\033[2;2~",    +1,    0},
+    { XK_Insert,        ControlMask,    "\033[L",       -1,    0},
+    { XK_Insert,        ControlMask,    "\033[2;5~",    +1,    0},
+    { XK_Insert,        XK_ANY_MOD,     "\033[4h",      -1,    0},
+    { XK_Insert,        XK_ANY_MOD,     "\033[2~",      +1,    0},
+    { XK_Delete,        ControlMask,    "\033[M",       -1,    0},
+    { XK_Delete,        ControlMask,    "\033[3;5~",    +1,    0},
+    { XK_Delete,        ShiftMask,      "\033[2K",      -1,    0},
+    { XK_Delete,        ShiftMask,      "\033[3;2~",    +1,    0},
+    { XK_Delete,        XK_ANY_MOD,     "\033[P",       -1,    0},
+    { XK_Delete,        XK_ANY_MOD,     "\033[3~",      +1,    0},
+    { XK_BackSpace,     XK_NO_MOD,      "\177",          0,    0},
+    { XK_BackSpace,     Mod1Mask,       "\033\177",      0,    0},
+    { XK_Home,          ShiftMask,      "\033[2J",       0,   -1},
+    { XK_Home,          ShiftMask,      "\033[1;2H",     0,   +1},
+    { XK_Home,          XK_ANY_MOD,     "\033[H",        0,   -1},
+    { XK_Home,          XK_ANY_MOD,     "\033[1~",       0,   +1},
+    { XK_End,           ControlMask,    "\033[J",       -1,    0},
+    { XK_End,           ControlMask,    "\033[1;5F",    +1,    0},
+    { XK_End,           ShiftMask,      "\033[K",       -1,    0},
+    { XK_End,           ShiftMask,      "\033[1;2F",    +1,    0},
+    { XK_End,           XK_ANY_MOD,     "\033[4~",       0,    0},
+    { XK_Prior,         ControlMask,    "\033[5;5~",     0,    0},
+    { XK_Prior,         ShiftMask,      "\033[5;2~",     0,    0},
+    { XK_Prior,         XK_ANY_MOD,     "\033[5~",       0,    0},
+    { XK_Next,          ControlMask,    "\033[6;5~",     0,    0},
+    { XK_Next,          ShiftMask,      "\033[6;2~",     0,    0},
+    { XK_Next,          XK_ANY_MOD,     "\033[6~",       0,    0},
+    { XK_F1,            XK_NO_MOD,      "\033OP" ,       0,    0},
+    { XK_F1, /* F13 */  ShiftMask,      "\033[1;2P",     0,    0},
+    { XK_F1, /* F25 */  ControlMask,    "\033[1;5P",     0,    0},
+    { XK_F1, /* F37 */  Mod4Mask,       "\033[1;6P",     0,    0},
+    { XK_F1, /* F49 */  Mod1Mask,       "\033[1;3P",     0,    0},
+    { XK_F1, /* F61 */  Mod3Mask,       "\033[1;4P",     0,    0},
+    { XK_F2,            XK_NO_MOD,      "\033OQ" ,       0,    0},
+    { XK_F2, /* F14 */  ShiftMask,      "\033[1;2Q",     0,    0},
+    { XK_F2, /* F26 */  ControlMask,    "\033[1;5Q",     0,    0},
+    { XK_F2, /* F38 */  Mod4Mask,       "\033[1;6Q",     0,    0},
+    { XK_F2, /* F50 */  Mod1Mask,       "\033[1;3Q",     0,    0},
+    { XK_F2, /* F62 */  Mod3Mask,       "\033[1;4Q",     0,    0},
+    { XK_F3,            XK_NO_MOD,      "\033OR" ,       0,    0},
+    { XK_F3, /* F15 */  ShiftMask,      "\033[1;2R",     0,    0},
+    { XK_F3, /* F27 */  ControlMask,    "\033[1;5R",     0,    0},
+    { XK_F3, /* F39 */  Mod4Mask,       "\033[1;6R",     0,    0},
+    { XK_F3, /* F51 */  Mod1Mask,       "\033[1;3R",     0,    0},
+    { XK_F3, /* F63 */  Mod3Mask,       "\033[1;4R",     0,    0},
+    { XK_F4,            XK_NO_MOD,      "\033OS" ,       0,    0},
+    { XK_F4, /* F16 */  ShiftMask,      "\033[1;2S",     0,    0},
+    { XK_F4, /* F28 */  ControlMask,    "\033[1;5S",     0,    0},
+    { XK_F4, /* F40 */  Mod4Mask,       "\033[1;6S",     0,    0},
+    { XK_F4, /* F52 */  Mod1Mask,       "\033[1;3S",     0,    0},
+    { XK_F5,            XK_NO_MOD,      "\033[15~",      0,    0},
+    { XK_F5, /* F17 */  ShiftMask,      "\033[15;2~",    0,    0},
+    { XK_F5, /* F29 */  ControlMask,    "\033[15;5~",    0,    0},
+    { XK_F5, /* F41 */  Mod4Mask,       "\033[15;6~",    0,    0},
+    { XK_F5, /* F53 */  Mod1Mask,       "\033[15;3~",    0,    0},
+    { XK_F6,            XK_NO_MOD,      "\033[17~",      0,    0},
+    { XK_F6, /* F18 */  ShiftMask,      "\033[17;2~",    0,    0},
+    { XK_F6, /* F30 */  ControlMask,    "\033[17;5~",    0,    0},
+    { XK_F6, /* F42 */  Mod4Mask,       "\033[17;6~",    0,    0},
+    { XK_F6, /* F54 */  Mod1Mask,       "\033[17;3~",    0,    0},
+    { XK_F7,            XK_NO_MOD,      "\033[18~",      0,    0},
+    { XK_F7, /* F19 */  ShiftMask,      "\033[18;2~",    0,    0},
+    { XK_F7, /* F31 */  ControlMask,    "\033[18;5~",    0,    0},
+    { XK_F7, /* F43 */  Mod4Mask,       "\033[18;6~",    0,    0},
+    { XK_F7, /* F55 */  Mod1Mask,       "\033[18;3~",    0,    0},
+    { XK_F8,            XK_NO_MOD,      "\033[19~",      0,    0},
+    { XK_F8, /* F20 */  ShiftMask,      "\033[19;2~",    0,    0},
+    { XK_F8, /* F32 */  ControlMask,    "\033[19;5~",    0,    0},
+    { XK_F8, /* F44 */  Mod4Mask,       "\033[19;6~",    0,    0},
+    { XK_F8, /* F56 */  Mod1Mask,       "\033[19;3~",    0,    0},
+    { XK_F9,            XK_NO_MOD,      "\033[20~",      0,    0},
+    { XK_F9, /* F21 */  ShiftMask,      "\033[20;2~",    0,    0},
+    { XK_F9, /* F33 */  ControlMask,    "\033[20;5~",    0,    0},
+    { XK_F9, /* F45 */  Mod4Mask,       "\033[20;6~",    0,    0},
+    { XK_F9, /* F57 */  Mod1Mask,       "\033[20;3~",    0,    0},
+    { XK_F10,           XK_NO_MOD,      "\033[21~",      0,    0},
+    { XK_F10, /* F22 */ ShiftMask,      "\033[21;2~",    0,    0},
+    { XK_F10, /* F34 */ ControlMask,    "\033[21;5~",    0,    0},
+    { XK_F10, /* F46 */ Mod4Mask,       "\033[21;6~",    0,    0},
+    { XK_F10, /* F58 */ Mod1Mask,       "\033[21;3~",    0,    0},
+    { XK_F11,           XK_NO_MOD,      "\033[23~",      0,    0},
+    { XK_F11, /* F23 */ ShiftMask,      "\033[23;2~",    0,    0},
+    { XK_F11, /* F35 */ ControlMask,    "\033[23;5~",    0,    0},
+    { XK_F11, /* F47 */ Mod4Mask,       "\033[23;6~",    0,    0},
+    { XK_F11, /* F59 */ Mod1Mask,       "\033[23;3~",    0,    0},
+    { XK_F12,           XK_NO_MOD,      "\033[24~",      0,    0},
+    { XK_F12, /* F24 */ ShiftMask,      "\033[24;2~",    0,    0},
+    { XK_F12, /* F36 */ ControlMask,    "\033[24;5~",    0,    0},
+    { XK_F12, /* F48 */ Mod4Mask,       "\033[24;6~",    0,    0},
+    { XK_F12, /* F60 */ Mod1Mask,       "\033[24;3~",    0,    0},
+    { XK_F13,           XK_NO_MOD,      "\033[1;2P",     0,    0},
+    { XK_F14,           XK_NO_MOD,      "\033[1;2Q",     0,    0},
+    { XK_F15,           XK_NO_MOD,      "\033[1;2R",     0,    0},
+    { XK_F16,           XK_NO_MOD,      "\033[1;2S",     0,    0},
+    { XK_F17,           XK_NO_MOD,      "\033[15;2~",    0,    0},
+    { XK_F18,           XK_NO_MOD,      "\033[17;2~",    0,    0},
+    { XK_F19,           XK_NO_MOD,      "\033[18;2~",    0,    0},
+    { XK_F20,           XK_NO_MOD,      "\033[19;2~",    0,    0},
+    { XK_F21,           XK_NO_MOD,      "\033[20;2~",    0,    0},
+    { XK_F22,           XK_NO_MOD,      "\033[21;2~",    0,    0},
+    { XK_F23,           XK_NO_MOD,      "\033[23;2~",    0,    0},
+    { XK_F24,           XK_NO_MOD,      "\033[24;2~",    0,    0},
+    { XK_F25,           XK_NO_MOD,      "\033[1;5P",     0,    0},
+    { XK_F26,           XK_NO_MOD,      "\033[1;5Q",     0,    0},
+    { XK_F27,           XK_NO_MOD,      "\033[1;5R",     0,    0},
+    { XK_F28,           XK_NO_MOD,      "\033[1;5S",     0,    0},
+    { XK_F29,           XK_NO_MOD,      "\033[15;5~",    0,    0},
+    { XK_F30,           XK_NO_MOD,      "\033[17;5~",    0,    0},
+    { XK_F31,           XK_NO_MOD,      "\033[18;5~",    0,    0},
+    { XK_F32,           XK_NO_MOD,      "\033[19;5~",    0,    0},
+    { XK_F33,           XK_NO_MOD,      "\033[20;5~",    0,    0},
+    { XK_F34,           XK_NO_MOD,      "\033[21;5~",    0,    0},
+    { XK_F35,           XK_NO_MOD,      "\033[23;5~",    0,    0},
+  };
 
-/*
- * Selection types' masks.
- * Use the same masks as usual.
- * Button1Mask is always unset, to make masks match between ButtonPress.
- * ButtonRelease and MotionNotify.
- * If no match is found, regular selection is used.
- */
-static uint selmasks[] = {
-	[SEL_RECTANGULAR] = Mod1Mask,
-};
+  /*
+   ,* Selection types' masks.
+   ,* Use the same masks as usual.
+   ,* Button1Mask is always unset, to make masks match between ButtonPress.
+   ,* ButtonRelease and MotionNotify.
+   ,* If no match is found, regular selection is used.
+   ,*/
+  static uint selmasks[] = {
+    [SEL_RECTANGULAR] = Mod1Mask,
+  };
 
-/*
- * Printable characters in ASCII, used to estimate the advance width
- * of single wide characters.
- */
-static char ascii_printable[] =
-	" !\"#$%&'()*+,-./0123456789:;<=>?"
-	"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
-	"`abcdefghijklmnopqrstuvwxyz{|}~";
+  /*
+   ,* Printable characters in ASCII, used to estimate the advance width
+   ,* of single wide characters.
+   ,*/
+  static char ascii_printable[] =
+    " !\"#$%&'()*+,-./0123456789:;<=>?"
+    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+    "`abcdefghijklmnopqrstuvwxyz{|}~";
 
 #+END_SRC
 ** screen
@@ -1190,7 +1395,7 @@ Looks like this [[./img/screen.png]]
 This gives a modeline with the current window highlighted, that displays the windows, hostname, and the time
 #+BEGIN_SRC conf-space :tangle home/.screenrc
   hardstatus alwayslastline
-hardstatus string '%{= kG}[%{G}%H%? %1`%?%{g}][%= %{= kw}%-w%{+b yk} %n*%t%?(%u)%? %{-}%+w %=%{g}][%{B}%m/%d %{W}%C%A%{g}]'
+  hardstatus string '%{= kG}[%{G}%H%? %1`%?%{g}][%= %{= kw}%-w%{+b yk} %n*%t%?(%u)%? %{-}%+w %=%{g}][%{B}%m/%d %{W}%C%A%{g}]'
 
 #+END_SRC
 *** scrollback buffer
@@ -1200,7 +1405,7 @@ hardstatus string '%{= kG}[%{G}%H%? %1`%?%{g}][%= %{= kw}%-w%{+b yk} %n*%t%?(%u)
 *** Stuff for 256 color and some tui stuff
 256 color stuff
 #+BEGIN_SRC conf-space :tangle home/.screenrc
-termcapinfo xterm 'Co#256:AB=\E[48;5;%dm:AF=\E[38;5;%dm'  
+  termcapinfo xterm 'Co#256:AB=\E[48;5;%dm:AF=\E[38;5;%dm'  
 #+END_SRC
 Allow terminal bg erase
 #+BEGIN_SRC conf-space :tangle home/.screenrc
@@ -1208,7 +1413,7 @@ Allow terminal bg erase
 #+END_SRC
 set terminal type to support 256colors
 #+BEGIN_SRC conf-space :tangle home/.screenrc
- term screen-256color 
+  term screen-256color 
 #+END_SRC
 *** Startup programs( change these)
 Currently starts
@@ -1219,51 +1424,51 @@ Currently starts
 - catgirl(on irc.libera.chat)
 - ani-cli
   #+BEGIN_SRC conf-space :tangle home/.screenrc
-    
-screen -t Shell1  1 $SHELL
-screen -t Shell2  2 $SHELL
-screen -t Python  3  python
-screen -t Media   4 cmus
-screen -t IRC 5 catgirl -h irc.libera.chat
-screen -t anime 6 ani-cli
+
+    screen -t Shell1  1 $SHELL
+    screen -t Shell2  2 $SHELL
+    screen -t Python  3  python
+    screen -t Media   4 cmus
+    screen -t IRC 5 catgirl -h irc.libera.chat
+    screen -t anime 6 ani-cli
   #+END_SRC
 *** Make window numbering start at 1 and not 0
-  #+BEGIN_SRC conf-space :tangle home/.screenrc
-   select 0
-bind c screen 1 # window numbering starts at 1 not 0
-bind 0 select 10 
-  #+END_SRC
+#+BEGIN_SRC conf-space :tangle home/.screenrc
+  select 0
+  bind c screen 1 # window numbering starts at 1 not 0
+  bind 0 select 10 
+#+END_SRC
 
 *** Layout stuff  
 **** Automatically save layout changes
-    #+BEGIN_SRC conf-space :tangle home/.screenrc
-      layout autosave on
-    #+END_SRC
+#+BEGIN_SRC conf-space :tangle home/.screenrc
+  layout autosave on
+#+END_SRC
 **** Create initial layouts
-    #+BEGIN_SRC conf-space :tangle home/.screenrc
-            layout new one
-      select 1
-      layout new two
-      select 1
-      split
-      resize -v +8
-      focus down
-      select 4
-      focus up
-      layout new three
-      select 1
-      split
-      resize -v +7
-      focus down
-      select 3
-      split -v
-      resize -h +10
-      focus right
-      select 4
-      focus up
-      layout attach one
-      layout select one
-    #+END_SRC
+#+BEGIN_SRC conf-space :tangle home/.screenrc
+  layout new one
+  select 1
+  layout new two
+  select 1
+  split
+  resize -v +8
+  focus down
+  select 4
+  focus up
+  layout new three
+  select 1
+  split
+  resize -v +7
+  focus down
+  select 3
+  split -v
+  resize -h +10
+  focus right
+  select 4
+  focus up
+  layout attach one
+  layout select one
+#+END_SRC
 *** Navigation
 **** Enable mouse tracking
 #+BEGIN_SRC conf-space :tangle home/.screenrc
@@ -1272,52 +1477,52 @@ bind 0 select 10
 **** Navigate regions with Ctrl-arrow
 #+BEGIN_SRC conf-space :tangle home/.screenrc
   bindkey "^[[1;5D" focus left
-bindkey "^[[1;5C" focus right
-bindkey "^[[1;5A" focus up
-bindkey "^[[1;5B" focus down
+  bindkey "^[[1;5C" focus right
+  bindkey "^[[1;5A" focus up
+  bindkey "^[[1;5B" focus down
 #+END_SRC
 **** Switch windows with F3(prev) and F4(next)
 #+BEGIN_SRC conf-space :tangle home/.screenrc
   bindkey "^[OR" prev
-bindkey "^[OS" next
+  bindkey "^[OS" next
 #+END_SRC
 **** Switch layouts with Ctrl-F3(prev) and Ctrl-F4(next)
 #+BEGIN_SRC conf-space :tangle home/.screenrc
   bindkey "^[O1;5R" layout prev
-bindkey "^[O1;5S" layout next
+  bindkey "^[O1;5S" layout next
 #+END_SRC
 **** Resizing(F2 to enter resize mode)
-#+BEGIN_SRC conf-space :tangle home/.screenrcw
+#+BEGIN_SRC conf-space :tangle home/.screenrc
   bind -c rsz h eval "resize -h -5" "command -c rsz"
-bind -c rsz j eval "resize -v -5" "command -c rsz"
-bind -c rsz k eval "resize -v +5" "command -c rsz"
-bind -c rsz l eval "resize -h +5" "command -c rsz"
+  bind -c rsz j eval "resize -v -5" "command -c rsz"
+  bind -c rsz k eval "resize -v +5" "command -c rsz"
+  bind -c rsz l eval "resize -h +5" "command -c rsz"
 #+END_SRC
 **** Quick switch with Tab+Arrows
-#+BEGIN_SRC conf-space :tangle home/.screenrcw
+#+BEGIN_SRC conf-space :tangle home/.screenrc
   bind -c rsz \t    eval "focus"       "command -c rsz" # Tab
-bind -c rsz -k kl eval "focus left"  "command -c rsz" # Left
-bind -c rsz -k kr eval "focus right" "command -c rsz" # Right
-bind -c rsz -k ku eval "focus up"    "command -c rsz" # Up
-bind -c rsz -k kd eval "focus down"  "command -c rsz" # Down
+  bind -c rsz -k kl eval "focus left"  "command -c rsz" # Left
+  bind -c rsz -k kr eval "focus right" "command -c rsz" # Right
+  bind -c rsz -k ku eval "focus up"    "command -c rsz" # Up
+  bind -c rsz -k kd eval "focus down"  "command -c rsz" # Down
 
 #+END_SRC
 ** mksh
 I use mksh as my interactive shell because it is simple and fast, here is my config
 *** FZF-MKSH downloader in the ruby script
 #+BEGIN_SRC ruby :tangle setup.rb
+  def clone_fzf_mksh
+    repository_path = "home/.fzf-mksh"
 
-repository_path = "home/.fzf-mksh"
+    # Ensure the parent directory exists
+    parent_directory = File.dirname(repository_path)
+    FileUtils.mkdir_p(parent_directory)
 
-# Ensure the parent directory exists
-parent_directory = File.dirname(repository_path)
-FileUtils.mkdir_p(parent_directory)
+    # Clone the repository
+    system("git", "clone", "https://github.com/seankhl/fzf-mksh", repository_path)
 
-# Clone the repository
-system("git", "clone", "https://github.com/seankhl/fzf-mksh", repository_path)
-
-puts "fzf-mksh cloned into #{repository_path}"
-
+    puts "fzf-mksh cloned into #{repository_path}"
+  end
 #+END_SRC
 *** Autoscreen script
 I have a script to automatically connect to gnu screen
@@ -1325,39 +1530,39 @@ I have a script to automatically connect to gnu screen
 #+BEGIN_SRC sh :tangle home/.autoscreen
   #!/bin/mksh
   if [[ "$TERM" == *"screen"* ]]; then
-    echo "Already in GNU screen"
-    exit 0
-fi
+      echo "Already in GNU screen"
+      exit 0
+  fi
 
 #+END_SRC
 **** Check if the output of screen-ls contains "normal", which is my normal use screen session
 #+BEGIN_SRC sh :tangle home/.autoscreen
   # Check if the output of screen -ls contains "normal"
-if screen -ls | grep -q "normal"; then
-    # Extract the session ID and name using awk
-    SESSION_ID=$(screen -ls | grep "normal" | awk '{print $1}')
-    
-    # Construct the command to connect to the screen session
-    SCREEN_COMMAND="screen -x  ${SESSION_ID}"
-    
-    # Echo the message indicating the connection to an existing instance
-    echo "Screen already running, connecting to existing instance..."
-   export TERM=xterm-256color    
-    # Execute the command to connect to the screen session
-    eval "${SCREEN_COMMAND}"
+  if screen -ls | grep -q "normal"; then
+      # Extract the session ID and name using awk
+      SESSION_ID=$(screen -ls | grep "normal" | awk '{print $1}')
+      
+      # Construct the command to connect to the screen session
+      SCREEN_COMMAND="screen -x  ${SESSION_ID}"
+      
+      # Echo the message indicating the connection to an existing instance
+      echo "Screen already running, connecting to existing instance..."
+      export TERM=xterm-256color    
+      # Execute the command to connect to the screen session
+      eval "${SCREEN_COMMAND}"
 #+END_SRC
 **** Otherwise create a session
 #+BEGIN_SRC sh :tangle home/.autoscreen
-else
-    # If no matching session was found, inform the user
-    echo "No screen session with 'normal' found, creating one"
-    screen -S normal
-fi
+  else
+      # If no matching session was found, inform the user
+      echo "No screen session with 'normal' found, creating one"
+      screen -S normal
+  fi
 #+END_SRC
 **** Automatically load the script, but first, export $DISPLAY
 #+BEGIN_SRC sh :tangle home/.mkshrc
-  export DISPLAY="${DISPLAY}"
-  exec $HOME/.autoscreen
+#  export DISPLAY="${DISPLAY}"
+  $HOME/.autoscreen
 #+END_SRC
 *** Plugins
 I use https://github.com/seankhl/fzf-mksh for fzf stuff
@@ -1375,16 +1580,16 @@ I make frequent use of these
 #+END_SRC
 **** Cooler replacements for common shell utilities
 #+BEGIN_SRC sh :tangle home/.mkshrc
-export DISPLAY=:0
-alias lah="eza -laz"
-alias laz="eza -lahZ"
-alias la="eza --icons -a"
-alias ls="eza --icons"
-alias tree="eza --tree -lah"
+#  export DISPLAY=:0
+  alias lah="eza -laz"
+  alias laz="eza -lahZ"
+  alias la="eza --icons -a"
+  alias ls="eza --icons"
+  alias tree="eza --tree -lah"
 #+END_SRC
 **** Catgirl 
 Replace with your NickServ user and passwd
-#+BEGIN_SRC sh :tangle home/,mkshrc
+#+BEGIN_SRC sh :tangle home/.mkshrc
   alias libera="catgirl -a user:pass -h irc.libera.chat"
   alias rizon="catgirl -a user:pass -h irc.rizon.net"
 #+END_SRC
@@ -1399,62 +1604,107 @@ This is a cool prompt
 **** Print a short PWD
 prints a shortened version of the current working directory, displaying "~" for the home directory, "/" for the root directory, the relative path from the home directory if applicable, or just the current directory name otherwise.
 #+BEGIN_SRC sh :tangle home/.mkshrc
-print_short_pwd()
-{
-    if [[ "$PWD" == "$HOME" ]]; then
-        echo -n "~"
-    elif [[ "$PWD" == "/" ]]; then
-        echo -n "/"
-    else
-        local relative_path="${PWD#$HOME/}"
-        if [[ "$relative_path" != "$PWD" ]]; then
-            echo -n "${relative_path}"
-        else
-            echo -n "${PWD##*/}"
-        fi
-    fi
-}
+  print_short_pwd()
+  {
+      if [[ "$PWD" == "$HOME" ]]; then
+          echo -n "~"
+      elif [[ "$PWD" == "/" ]]; then
+          echo -n "/"
+      else
+          local relative_path="${PWD#$HOME/}"
+          if [[ "$relative_path" != "$PWD" ]]; then
+              echo -n "${relative_path}"
+          else
+              echo -n "${PWD##*/}"
+          fi
+      fi
+  }
 
 #+END_SRC
 **** Set the PS1
 sets the ps1 to include the login name, the hostname, the current directory, a newline, and then a $ sign. colored with tput
 #+BEGIN_SRC sh :tangle home/.mkshrc
-PS1='$(tput setaf 2)$(printf "%s")$(logname)$(tput sgr0)@$(tput setaf 5)$(printf "%s")$(hostname)$(tput sgr0)$(tput setaf 3) $(printf "%s")$(print_short_pwd)$(tput sgr0)$(echo -e "\n$ ")'
+  PS1='$(tput setaf 2)$(printf "%s")$(logname)$(tput sgr0)@$(tput setaf 5)$(printf "%s")$(hostname)$(tput sgr0)$(tput setaf 3) $(printf "%s")$(print_short_pwd)$(tput sgr0)$(echo -e "\n$ ")'
 #+END_SRC
 *** Add some stuff to path and set the editing mode
-#+BEGIN_SRC sh :tangle home/,mkshrc
-export PATH="${PATH}:${HOME}/.local/bin:${HOME}/.cargo/bin"
-set -o emacs
+#+BEGIN_SRC sh :tangle home/.mkshrc
+  export PATH="${PATH}:${HOME}/.local/bin:${HOME}/.cargo/bin"
+  set -o emacs
 #+END_SRC
 *** FZF stuff
 fzf stuff for mksh
 Set default opts to make it look something like this
 
 [[./img/fzf.png]]
-#+BEGIN_SRC sh :tangle home/,mkshrc
+#+BEGIN_SRC sh :tangle home/.mkshrc
   export FZF_DEFAULT_OPTS=" --height 40% --layout reverse --border"
-export FZF_CTRL_T_OPTS="
-  ${FZF_DEFAULT_OPTS}
-  --walker-skip .git,node_modules,target
-  --preview 'if [[ -d {} ]]; then tree -C {}; else bat -n --color=always {}; fi'
-  --bind 'ctrl-/:change-preview-window(down|hidden|)'
-"
+  export FZF_CTRL_T_OPTS="
+    ${FZF_DEFAULT_OPTS}
+    --walker-skip .git,node_modules,target
+    --preview 'if [[ -d {} ]]; then tree -C {}; else bat -n --color=always {}; fi'
+    --bind 'ctrl-/:change-preview-window(down|hidden|)'
+  "
 
-export FZF_ALT_C_OPTS="
-   ${FZF_DEFAULT_OPTS}
-  --walker-skip .git,node_modules,target
-  --preview 'tree -C {}'"
+  export FZF_ALT_C_OPTS="
+     ${FZF_DEFAULT_OPTS}
+    --walker-skip .git,node_modules,target
+    --preview 'tree -C {}'"
 
 #+END_SRC
 Key binds
-#+BEGIN_SRC sh :tangle home/,mkshrc
-. ~/.fzf-mksh/key-bindings.mksh
-. ~/.fzf-mksh/completion.mksh
+#+BEGIN_SRC sh :tangle home/.mkshrc
+  . ~/.fzf-mksh/key-bindings.mksh
 #+END_SRC 
 *** Persistent history
 mksh will not save history to a file if $HISTFILE is not set
-#+BEGIN_SRC sh :tangle home/,mkshrc
+#+BEGIN_SRC sh :tangle home/.mkshrc
   export HISTFILE="$HOME/.mksh_history"
-export HISTSIZE="5000"
+  export HISTSIZE="5000"
+
+#+END_SRC
+** PUT THIS AT END(SCRIPT STUFF)!!!
+#+BEGIN_SRC ruby :tangle setup.rb
+
+  options = {}
+
+  OptionParser.new do |opts|
+    opts.banner = "Usage: dont do this directly but ruby setup.rb [options]]"
+    
+    opts.on("-a", "--all", "Run all actions") do
+      options[:all] = true
+    end
+    
+    opts.on("-s", "--stump-contrib", "Clone stumpwm-contrib") do
+      options[:stump_contrib] = true
+    end
+    opts.on("-m", "--fzf-mksh", "Clone stumpwm-contrib") do
+      options[:clone_fzf_mksh] = true
+    end
+    
+    opts.on("-q", "--quicklisp", "Install Quicklisp") do
+      options[:quicklisp] = true
+    end
+    
+    opts.on("-t", "--st", "Install ST terminal") do
+      options[:st] = true
+    end
+    
+    opts.on_tail("-h", "--help", "Show this message") do
+      puts opts
+      exit
+    end
+  end.parse!
+
+  if options[:all]
+    install_quicklisp
+    clone_stumpwm_contrib
+    install_st
+    clone_fzf_mksh
+  else
+    install_quicklisp if options[:quicklisp]
+    clone_stumpwm_contrib if options[:stump_contrib]
+    install_st if options[:st]
+    clone_fzf_mksh if options[:clone_fzf_mksh]
+  end
 
 #+END_SRC
