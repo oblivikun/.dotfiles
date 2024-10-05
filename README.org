@@ -129,15 +129,52 @@ My system follows the selenized-black colorscheme from https://github.com/jan-wa
 | White       | #dedede  |
 ** CageBreak
 Cagebreak is a window manager like ratpoison, but more minimal and it uses wayland!1!1! But it doesnt support wlr_layer_shell.
+*** Foot config
+Simple selenized with a slightly larger font
+**** Colors
+#+BEGIN_SRC conf-unix :tangle home/.config/foot/foot.ini :mkdirp yes
+  [cursor]
+  color = 181818 56d8c9
+
+  [colors]
+  background= 181818
+  foreground= b9b9b9
+
+  regular0=   252525
+  regular1=   ed4a46
+  regular2=   70b433
+  regular3=   dbb32d
+  regular4=   368aeb
+  regular5=   eb6eb7
+  regular6=   3fc5b7
+  regular7=   777777
+
+  bright0=    3b3b3b
+  bright1=    ff5e56
+  bright2=    83c746
+  bright3=    efc541
+  bright4=    4f9cfe
+  bright5=    ff81ca
+  bright6=    56d8c9
+  bright7=    dedede
+#+END_SRC
+**** Font
+#+BEGIN_SRC conf-unix :tangle home/.config/foot/foot.ini :mkdirp yes
+    [main]
+    font=monospace:size=12:style=Regular
+
+#+END_SRC
 *** Startup programs
 Foot server and server we use for our app launcher
 #+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config :mkdirp yes
+  exec gentoo-pipewire-launcher
   exec foot --server
   exec foot --server=/tmp/foot-app.sock -c ~/.config/foot/app.ini
+  exec foot --server=/tmp/foot-games.sock -c ~/.config/foot/games.ini
 #+END_SRC
 *** Workspaces
 #+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
-  workspaces 6
+  workspaces 6#
 #+END_SRC
 *** Enable cursor
 #+BEGIN_SRC conf-space :tanlge home/.config/cagebreak/config
@@ -221,8 +258,106 @@ Foot config
 [main]
 shell="mksh -c '/home/erel/.app-launcher-fzf.sh'"  
 #+END_SRC
+******* Game launching
+this will look in ~/.gameslist and, launch it with wine and labwc(because tiling WMs suck for gaming)
+*Written in python because this would be hell in sh*
+#+BEGIN_SRC python :tangle home/.game-launcher.py
+#!/usr/bin/env python3
+#!/usr/bin/env python3
+
+import os
+from collections import defaultdict
+import shlex
+import subprocess
+import sys
+import time
+def main():
+    games_file = os.path.expanduser('~/.gameslist')
+
+    # Read and filter the games list
+    games = read_and_filter_games(games_file)
+
+    # Create a dictionary mapping game numbers to their paths
+    numbered_games = dict(enumerate(games, start=1))
+
+    # Display the numbered list of games
+    display_numbered_games(numbered_games)
+
+    # Get user input for the game number
+    while True:
+        user_input = input("Enter the number of the game you want to play (or type 'quit'): ")
+        
+        if user_input.lower() == 'quit':
+            print("Exiting program.")
+            return
+        
+        try:
+            selected_number = int(user_input)
+            
+            if selected_number == 0:
+                print("Exiting program.")
+                return
+            
+            elif selected_number < 1 or selected_number > len(games):
+                print("Invalid selection. Please try again.")
+            else:
+                break
+        except ValueError:
+            print("Invalid input. Please enter a number or type 'quit'.")
+
+    # Validate and launch the selected game
+    game_pid = launch_selected_game(numbered_games[selected_number])
+    
+    if game_pid:
+        print(f"Game '{numbered_games[selected_number]}' has been launched in the background. PID: {game_pid}")
+        time.sleep(2)
+        print("Exiting Python script...")
+        sys.exit(0)
+    else:
+        print("Failed to launch game.")
+
+def read_and_filter_games(file_path):
+    games = set()
+    with open(file_path) as file:
+        for line in file:
+            stripped_line = line.strip()
+            if stripped_line and not stripped_line.startswith('#'):
+                games.add(stripped_line)
+    return sorted(list(games))
+
+def display_numbered_games(numbered_games):
+    for number, game in numbered_games.items():
+        print(f"{number}: {game}")
+
+def launch_selected_game(game_name):
+    try:
+    
+        command = ["labwc", "-s", f"wine {shlex.quote(game_name)}"]
+        result = subprocess.Popen(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+         #   check=True
+        )    
+        print(f"Game '{game_name}' has been launched in the background.")
+        return result.pid
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+        return None
+
+if __name__ == "__main__":
+    main()
+
+#+END_SRC
+#+BEGIN_SRC conf-unix :tangle home/.config/foot/games.ini :mkdirp yes
+[main]
+shell="python3 '/home/erel/.game-launcher.py'"
+#+END_SRC
+******* Keybinds
 #+BEGIN_SRC conf-space :tangle home/.config/cagebreak/config
-   bind s exec footclient -s /tmp/foot-app.sock
+   bind C-a exec footclient -s /tmp/foot-app.sock
+   bind C-g exec footclient -s /tmp/foot-games.sock
   definekey apps s exec gentoo
   definekey apps Escape setmode top
 #+END_SRC
@@ -329,7 +464,7 @@ definekey top XF86MonBrightnessUp exec sudo brightnessctl s +15%
 definekey top XF86MonBrightnessDown exec sudo brightnessctl s 15%-
 #+END_SRC
 ** StumpWM
-+I use https://stumpwm.github.io/ as my window manager *right now*. I recently switched from herbstluftwm+
+ use https://stumpwm.github.io/ as my window manager *right now*. I recently switched from herbstluftwm
 Looks like this.
 
 [[./img/stump.png]]
@@ -1421,7 +1556,7 @@ Currently starts
 - mksh
 - mksh
 - python
-- cmus
+- xmms2
 - catgirl(on irc.libera.chat)
 - ani-cli
   #+BEGIN_SRC conf-space :tangle home/.screenrc
@@ -1429,7 +1564,7 @@ Currently starts
     screen -t Shell1  1 $SHELL
     screen -t Shell2  2 $SHELL
     screen -t Python  3  python
-    screen -t Media   4 cmus
+    screen -t Media   4 xmms2
     screen -t IRC 5 catgirl -h irc.libera.chat
     screen -t anime 6 ani-cli
   #+END_SRC
@@ -1662,6 +1797,13 @@ mksh will not save history to a file if $HISTFILE is not set
   export HISTFILE="$HOME/.mksh_history"
   export HISTSIZE="5000"
 
+#+END_SRC
+*** COMMENT Wayland stuff
+No longer needed
+#+BEGIN_SRC sh :tangle home/.mkshrc
+export GDK_BACKEND=wayland
+export XDG_SESSION_TYPE=wayland
+export MOZ_ENABLE_WAYLAND=1
 #+END_SRC
 ** PUT THIS AT END(SCRIPT STUFF)!!!
 #+BEGIN_SRC ruby :tangle setup.rb

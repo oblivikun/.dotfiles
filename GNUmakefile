@@ -1,4 +1,13 @@
 .PHONY: bootstrap check-emacs tangle-org check-file setup-% clean  install-%
+define safe_link
+	@if [ -e "$(2)" ]; then \
+		echo "Removing existing $(2)"; \
+		rm -rf "$(2)"; \
+	fi
+	@echo "Symlinking $(1) to $(2)"
+	@ln -fs "$(1)" "$(2)"
+endef
+
 clean:
 	rm -rf ./home
 	rm -rf ./suckless
@@ -31,7 +40,8 @@ setup-stump: setup-lisp
 
 install-stump:
 	echo "Symlinking stumpwm config"
-	ln -fs "$(shell readlink -f ./home/.stumpwm.d)" "${HOME}/.stumpwm.d"
+	$(call safe_link,$(shell readlink -f ./home/.stumpwm.d),${HOME}/.stumpwm.d)
+
 install-st:
 	echo "Installing ST terminal"
 	ruby ./setup.rb -t
@@ -46,14 +56,19 @@ install-mksh: setup-mksh
 	ln -fs "$(shell readlink -f ./home/.fzf-mksh)" "${HOME}/.fzf-mksh"
 	ln -fs "$(shell readlink -f ./home/.autoscreen)" "${HOME}/.autoscreen"
 install-wayland:
+
 	echo "Installing FZF app launcher: Making script executable"
 	chmod +x ./home/.app-launcher-fzf.sh
+	echo "Installing Game launcher, making script executable"
+	chmod +x ./home/.game-launcher.py
+	echo "installing game launcher, symlinking scirpt"
+		ln -fs "$(shell readlink -f ./home/.game-launcher.py)" "${HOME}/.game-launcher.py"
 	echo "Install FZF app launcher: symlinking script"
 	ln -fs "$(shell readlink -f ./home/.app-launcher-fzf.sh)" "${HOME}/.app-launcher-fzf.sh"
 	chmod +x "${HOME}/.app-launcher-fzf.sh"
 	echo "Installing foot config(s) "
-	ln -fs "$(shell readlink -f ./home/.config/foot)" "${HOME}/.config/foot"
+	$(call safe_link,$(shell readlink -f ./home/.config/foot),${HOME}/.config/foot)
 	echo "Installing cagebreak Config"
-	ln -fs "$(shell readlink -f ./home/.config/cagebreak)" "${HOME}/.config/cagebreak"
+	$(call safe_link,$(shell readlink -f ./home/.config/cagebreak),${HOME}/.config/cagebreak)
 
 .DEFAULT_GOAL := bootstrap
